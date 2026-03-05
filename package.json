@@ -1,0 +1,34 @@
+{
+  "name": "remarka",
+  "version": "0.1.0",
+  "description": "A plug-and-play React Native feedback service with shake detection, screenshots and log capturing",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "react-native",
+    "feedback",
+    "bug-report",
+    "shake"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-native": ">=0.68.0"
+  },
+  "dependencies": {
+    "react-native-shake": "^3.7.0",
+    "react-native-view-shot": "^3.8.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-native": "^0.72.0",
+    "typescript": "^5.0.0"
+  }
+}

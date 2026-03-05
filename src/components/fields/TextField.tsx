@@ -1,0 +1,70 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+} from 'react-native';
+
+interface TextFieldProps {
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  hasError?: boolean;
+}
+
+const TextField: React.FC<TextFieldProps> = ({ value, onChange, required, hasError }) => {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.label}>
+        Message{required ? ' *' : ''}
+      </Text>
+      <TextInput
+        style={[styles.input, hasError && styles.inputError]}
+        value={value}
+        onChangeText={onChange}
+        placeholder="Describe the issue or share your thoughts..."
+        placeholderTextColor="#9CA3AF"
+        multiline
+        numberOfLines={5}
+        textAlignVertical="top"
+      />
+      {hasError && (
+        <Text style={styles.errorText}>This field is required</Text>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#111827',
+    backgroundColor: '#FFFFFF',
+    minHeight: 110,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#EF4444',
+  },
+});
+
+export default TextField;
