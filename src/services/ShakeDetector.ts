@@ -9,7 +9,7 @@
 type UnsubscribeFn = () => void;
 
 export function subscribeToShake(onShake: () => void): UnsubscribeFn {
-  let RNShake: { addListener: (event: string, cb: () => void) => { remove: () => void } } | null = null;
+  let RNShake: { addListener: (cb: () => void) => { remove: () => void } } | null = null;
 
   try {
     // Dynamic require so that the library stays optional at bundle time.
@@ -23,6 +23,7 @@ export function subscribeToShake(onShake: () => void): UnsubscribeFn {
     return () => {};
   }
 
-  const subscription = RNShake!.addListener('ShakeEvent', onShake);
+  // react-native-shake v6+ API: addListener(callback)
+  const subscription = RNShake!.addListener(onShake);
   return () => subscription.remove();
 }
