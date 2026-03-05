@@ -13,6 +13,10 @@ export interface ReMarkaStyles {
   buttonStyle?: StyleProp<ViewStyle>;
   /** Style for the submit button label text */
   buttonTitleStyle?: StyleProp<TextStyle>;
+  /** Style for the success screen container */
+  sentMessageContainerStyle?: StyleProp<ViewStyle>;
+  /** Style for the success message text */
+  sentMessageTextStyle?: StyleProp<TextStyle>;
 }
 
 export type FieldType =
@@ -56,6 +60,10 @@ export interface ReMarkaConfig {
   buttonLabel?: string;
   /** Tag sent along with feedback for categorisation (default: 'feedback') */
   tag?: string;
+  /** Automatically focus the first relevant input after the form opens (default: true) */
+  showKeyboardImmediately?: boolean;
+  /** Delay in ms before the keyboard is shown after the form opens (default: 1500) */
+  keyboardDelay?: number;
 }
 
 export interface LogEntry {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ interface EmailFieldProps {
   labelStyle?: StyleProp<TextStyle>;
 }
 
-const EmailField: React.FC<EmailFieldProps> = ({
+const EmailField = forwardRef<TextInput, EmailFieldProps>(({
   value,
   onChange,
   required,
@@ -28,13 +28,14 @@ const EmailField: React.FC<EmailFieldProps> = ({
   label = 'E-mail',
   inputStyle,
   labelStyle,
-}) => {
+}, ref) => {
   return (
     <View style={styles.container}>
       <Text style={[styles.label, labelStyle]}>
         {label}{required ? ' *' : ''}
       </Text>
       <TextInput
+        ref={ref}
         style={[styles.input, hasError && styles.inputError, inputStyle]}
         value={value}
         onChangeText={onChange}
@@ -50,7 +51,9 @@ const EmailField: React.FC<EmailFieldProps> = ({
       )}
     </View>
   );
-};
+});
+
+EmailField.displayName = 'EmailField';
 
 const styles = StyleSheet.create({
   container: {

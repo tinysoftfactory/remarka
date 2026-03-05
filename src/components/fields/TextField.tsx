@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ interface TextFieldProps {
   labelStyle?: StyleProp<TextStyle>;
 }
 
-const TextField: React.FC<TextFieldProps> = ({
+const TextField = forwardRef<TextInput, TextFieldProps>(({
   value,
   onChange,
   required,
@@ -28,13 +28,14 @@ const TextField: React.FC<TextFieldProps> = ({
   label = 'Message',
   inputStyle,
   labelStyle,
-}) => {
+}, ref) => {
   return (
     <View style={styles.container}>
       <Text style={[styles.label, labelStyle]}>
         {label}{required ? ' *' : ''}
       </Text>
       <TextInput
+        ref={ref}
         style={[styles.input, hasError && styles.inputError, inputStyle]}
         value={value}
         onChangeText={onChange}
@@ -49,7 +50,9 @@ const TextField: React.FC<TextFieldProps> = ({
       )}
     </View>
   );
-};
+});
+
+TextField.displayName = 'TextField';
 
 const styles = StyleSheet.create({
   container: {

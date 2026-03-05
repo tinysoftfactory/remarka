@@ -49,6 +49,8 @@ class ReMarkaController {
       messageLabel: 'Message',
       buttonLabel: 'Send',
       tag: 'feedback',
+      showKeyboardImmediately: true,
+      keyboardDelay: 1500,
       apiUrl: DEFAULT_API_URL,
       ...config,
       logsThreshold: threshold,
@@ -80,6 +82,28 @@ class ReMarkaController {
 
   static hide(): void {
     ReMarkaController.instance.events.emit('hide');
+  }
+
+  static async send(data: { email?: string; message?: string; tag?: string } = {}): Promise<void> {
+    const inst = ReMarkaController.instance;
+    const config = inst.getConfig();
+    const api = inst.getApi();
+
+    const fields = [];
+    if (data.email !== undefined) {
+      fields.push({ type: 'email' as const, value: data.email });
+    }
+    if (data.message !== undefined) {
+      fields.push({ type: 'text' as const, value: data.message });
+    }
+
+    await api.sendFeedback({
+      projectId: config.projectId,
+      tag: data.tag ?? config.tag ?? 'feedback',
+      fields,
+      logs: inst.getLogs(),
+      meta: inst.getMeta(),
+    });
   }
 
   // ─── Internal helpers used by ReMarkaProvider ────────────────────────────────

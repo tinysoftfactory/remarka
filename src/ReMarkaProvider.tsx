@@ -3,12 +3,10 @@ import { FeedbackFieldValue, ShowOverrideConfig, ReMarkaStyles } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
 import { captureScreenshot } from './services/ScreenshotService';
-import FeedbackModal from './components/FeedbackModal';
+import FeedbackModal, { FeedbackModalState } from './components/FeedbackModal';
 
-type ModalState =
-  | { phase: 'hidden' }
-  | { phase: 'form'; screenshot: string | null; override: ShowOverrideConfig }
-  | { phase: 'success'; message: string };
+// null means the modal is not mounted at all
+type ProviderState = FeedbackModalState | null;
 
 const SUCCESS_VISIBLE_MS = 2500;
 
@@ -17,7 +15,7 @@ interface ReMarkaProviderProps {
 }
 
 export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
-  const [modalState, setModalState] = useState<ModalState>({ phase: 'hidden' });
+  const [modalState, setModalState] = useState<ProviderState>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showSuccess = useCallback((message: string) => {
@@ -26,12 +24,12 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     setModalState({ phase: 'success', message });
 
     successTimerRef.current = setTimeout(() => {
-      setModalState({ phase: 'hidden' });
+      setModalState(null);
     }, SUCCESS_VISIBLE_MS);
   }, []);
 
   const openForm = useCallback(async (override?: ShowOverrideConfig) => {
-    if (modalState.phase !== 'hidden') return;
+    if (modalState !== null) return;
 
     const config = ReMarka.instance.getConfig();
     const withScreenshot = override?.withScreenshot ?? config.withScreenshot;
@@ -41,23 +39,26 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       screenshot = await captureScreenshot();
     }
 
-    setModalState({ phase: 'form', screenshot, override: override ?? {} });
-  }, [modalState.phase]);
+    setModalState({ phase: 'form', screenshot });
+    // Store override for use during submit — attached to state via closure
+    overrideRef.current = override ?? {};
+  }, [modalState]);
+
+  const overrideRef = useRef<ShowOverrideConfig>({});
 
   const handleClose = useCallback(() => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    setModalState({ phase: 'hidden' });
+    setModalState(null);
   }, []);
 
   const handleSubmit = useCallback(
     async (fields: FeedbackFieldValue[]) => {
       const config = ReMarka.instance.getConfig();
-      const override = modalState.phase === 'form' ? modalState.override : {};
-      const effectiveConfig = { ...config, ...override };
+      const effectiveConfig = { ...config, ...overrideRef.current };
       const api = ReMarka.instance.getApi();
       const logs = ReMarka.instance.getLogs();
       const meta = ReMarka.instance.getMeta();
-      const screenshot = modalState.phase === 'form' ? modalState.screenshot : null;
+      const screenshot = modalState?.phase === 'form' ? modalState.screenshot : null;
 
       try {
         await api.sendFeedback({
@@ -72,7 +73,6 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
         console.warn('[ReMarka] Failed to send feedback:', error);
       }
 
-      // Always show success, regardless of network errors
       showSuccess(effectiveConfig.sentMessage ?? 'Thank you for your feedback!');
     },
     [modalState, showSuccess],
@@ -110,6 +110,9 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     };
   }, []);
 
+  // Modal is not mounted when there's nothing to show
+  if (modalState === null) return null;
+
   let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
   try {
     config = ReMarka.instance.getConfig();
@@ -117,8 +120,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     return null;
   }
 
-  const override = modalState.phase === 'form' ? modalState.override : {};
-  const effectiveConfig = { ...config, ...override };
+  const effectiveConfig = { ...config, ...overrideRef.current };
 
   return (
     <FeedbackModal
@@ -131,6 +133,8 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       emailLabel={effectiveConfig.emailLabel}
       messageLabel={effectiveConfig.messageLabel}
       buttonLabel={effectiveConfig.buttonLabel}
+      showKeyboardImmediately={effectiveConfig.showKeyboardImmediately}
+      keyboardDelay={effectiveConfig.keyboardDelay}
       customStyles={styles}
       onSubmit={handleSubmit}
       onClose={handleClose}

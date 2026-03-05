@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, createRef } from 'react';
 import {
   View,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import { FieldType, FeedbackFieldValue, ReMarkaStyles } from '../types';
 import EmailField from './fields/EmailField';
@@ -21,6 +22,8 @@ interface FeedbackFormProps {
   emailLabel?: string;
   messageLabel?: string;
   buttonLabel?: string;
+  showKeyboardImmediately?: boolean;
+  keyboardDelay?: number;
   customStyles?: ReMarkaStyles;
   onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
   onClose: () => void;
@@ -28,6 +31,22 @@ interface FeedbackFormProps {
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+/**
+ * Returns the field that should receive focus on open:
+ * 1. First required field (email-required or text-required)
+ * 2. First message field (text or text-required)
+ * 3. First field of any type
+ * 4. null if no fields
+ */
+function resolveAutoFocusField(fields: FieldType[]): FieldType | null {
+  if (fields.length === 0) return null;
+  return (
+    fields.find((f) => f === 'email-required' || f === 'text-required') ??
+    fields.find((f) => f === 'text' || f === 'text-required') ??
+    fields[0]
+  );
 }
 
 const FeedbackForm: React.FC<FeedbackFormProps> = ({
@@ -39,6 +58,8 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   emailLabel,
   messageLabel,
   buttonLabel = 'Send',
+  showKeyboardImmediately = true,
+  keyboardDelay = 1500,
   customStyles,
   onSubmit,
   onClose,
@@ -48,6 +69,26 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   );
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+
+  // One ref per field type
+  const inputRefs = useRef<Partial<Record<FieldType, React.RefObject<TextInput>>>>(
+    Object.fromEntries(fields.map((f) => [f, createRef<TextInput>()])),
+  );
+
+  // Auto-focus logic
+  useEffect(() => {
+    if (!showKeyboardImmediately) return;
+
+    const targetField = resolveAutoFocusField(fields);
+    if (!targetField) return;
+
+    const timer = setTimeout(() => {
+      inputRefs.current[targetField]?.current?.focus();
+    }, keyboardDelay);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setValue = (field: FieldType, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -130,6 +171,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
           return (
             <EmailField
               key={field}
+              ref={inputRefs.current[field]}
               value={values[field] ?? ''}
               onChange={(v) => setValue(field, v)}
               required={field === 'email-required'}
@@ -144,6 +186,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
         return (
           <TextField
             key={field}
+            ref={inputRefs.current[field]}
             value={values[field] ?? ''}
             onChange={(v) => setValue(field, v)}
             required={field === 'text-required'}

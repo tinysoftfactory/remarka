@@ -4,19 +4,19 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableWithoutFeedback,
+  TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldType, FeedbackFieldValue, ShowAnimation, ReMarkaStyles } from '../types';
 import FeedbackForm from './FeedbackForm';
 
-type ModalState =
-  | { phase: 'hidden' }
-  | { phase: 'form'; screenshot: string | null; override: Record<string, unknown> }
+export type FeedbackModalState =
+  | { phase: 'form'; screenshot: string | null }
   | { phase: 'success'; message: string };
 
 interface FeedbackModalProps {
-  state: ModalState;
+  state: FeedbackModalState;
   title?: string;
   fields: FieldType[];
   showAnimation: ShowAnimation;
@@ -25,6 +25,8 @@ interface FeedbackModalProps {
   emailLabel?: string;
   messageLabel?: string;
   buttonLabel?: string;
+  showKeyboardImmediately?: boolean;
+  keyboardDelay?: number;
   customStyles?: ReMarkaStyles;
   onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
   onClose: () => void;
@@ -40,15 +42,15 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   emailLabel,
   messageLabel,
   buttonLabel,
+  showKeyboardImmediately,
+  keyboardDelay,
   customStyles,
   onSubmit,
   onClose,
 }) => {
-  const visible = state.phase !== 'hidden';
-
   return (
     <Modal
-      visible={visible}
+      visible
       animationType={showAnimation}
       presentationStyle="fullScreen"
       statusBarTranslucent
@@ -64,6 +66,8 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
             emailLabel={emailLabel}
             messageLabel={messageLabel}
             buttonLabel={buttonLabel}
+            showKeyboardImmediately={showKeyboardImmediately}
+            keyboardDelay={keyboardDelay}
             customStyles={customStyles}
             onSubmit={onSubmit}
             onClose={onClose}
@@ -72,9 +76,18 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
         {state.phase === 'success' && (
           <TouchableWithoutFeedback onPress={onClose}>
-            <View style={styles.successContainer}>
+            <View style={[styles.successContainer, customStyles?.sentMessageContainerStyle]}>
+              <TouchableOpacity
+                style={styles.successCloseButton}
+                onPress={onClose}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              >
+                <Text style={styles.successCloseButtonText}>✕</Text>
+              </TouchableOpacity>
               <Text style={styles.successIcon}>✓</Text>
-              <Text style={styles.successText}>{state.message}</Text>
+              <Text style={[styles.successText, customStyles?.sentMessageTextStyle]}>
+                {state.message}
+              </Text>
             </View>
           </TouchableWithoutFeedback>
         )}
@@ -93,6 +106,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+  },
+  successCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+  },
+  successCloseButtonText: {
+    fontSize: 18,
+    color: '#6B7280',
+    lineHeight: 24,
   },
   successIcon: {
     fontSize: 56,

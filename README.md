@@ -38,6 +38,8 @@ ReMarka.init({
   sentMessage: 'Thank you for your feedback!',
   fields: ['email', 'text-required'],
   tag: 'feedback',
+  showKeyboardImmediately: true,
+  keyboardDelay: 1500,
 });
 
 // 2. Add the provider near the root of your component tree
@@ -82,6 +84,8 @@ export default function App() {
 | `buttonLabel`            | `string`        | `'Send'`                                         | Submit button label                              |
 | `emailPlaceholderText`   | `string`        | `'your@email.com'`                               | Placeholder for email inputs                     |
 | `messagePlaceholderText` | `string`        | `'Describe the issue or share your thoughts...'` | Placeholder for text inputs                      |
+| `showKeyboardImmediately`| `boolean`       | `true`                                           | Auto-focus the first relevant input on open      |
+| `keyboardDelay`          | `number`        | `1500`                                           | Delay in ms before the keyboard appears          |
 
 #### Field types
 
@@ -124,6 +128,7 @@ ReMarka.show({
   buttonLabel: 'Report',
   sentMessage: 'Bug reported! We will fix it soon.',
   withScreenshot: true,
+  showKeyboardImmediately: false,
 });
 ```
 
@@ -132,6 +137,43 @@ ReMarka.show({
 ### `ReMarka.hide()`
 
 Programmatically closes the modal.
+
+---
+
+### `ReMarka.send(data?)`
+
+Sends feedback directly via the API, bypassing the form UI entirely. Useful for
+programmatic submissions — e.g. from your own custom form, on a caught error, or
+from an automated flow.
+
+| Field     | Type     | Description                                              |
+|-----------|----------|----------------------------------------------------------|
+| `email`   | `string` | User email (optional)                                    |
+| `message` | `string` | Feedback text (optional)                                 |
+| `tag`     | `string` | Overrides the `tag` from `init()` for this call (optional) |
+
+Logs collected via `ReMarka.log()` are always included. Returns a `Promise` that
+resolves when the request completes and rejects on network error.
+
+```ts
+// Simple message
+await ReMarka.send({ message: 'App crashed on the checkout screen' });
+
+// With email and custom tag
+await ReMarka.send({
+  email: 'user@example.com',
+  message: 'Payment button does not respond',
+  tag: 'bug-report',
+});
+
+// In a catch block
+try {
+  await processPayment();
+} catch (error) {
+  ReMarka.log('processPayment failed', error);
+  await ReMarka.send({ message: String(error), tag: 'crash' });
+}
+```
 
 ---
 
@@ -145,24 +187,28 @@ root of your tree, outside `SafeAreaView` so it can cover the full screen.
 All style props are optional and are merged on top of the default styles, so
 you only need to specify the properties you want to change.
 
-| Prop              | Type                      | Applies to                              |
-|-------------------|---------------------------|-----------------------------------------|
-| `containerStyle`  | `StyleProp<ViewStyle>`    | Scrollable form container (padding etc) |
-| `titleStyle`      | `StyleProp<TextStyle>`    | Modal title text                        |
-| `labelStyle`      | `StyleProp<TextStyle>`    | All field label texts                   |
-| `inputStyle`      | `StyleProp<TextStyle>`    | All text inputs (email and message)     |
-| `buttonStyle`     | `StyleProp<ViewStyle>`    | Submit button container                 |
-| `buttonTitleStyle`| `StyleProp<TextStyle>`    | Submit button label text                |
+| Prop                       | Type                      | Applies to                                        |
+|----------------------------|---------------------------|---------------------------------------------------|
+| `containerStyle`           | `StyleProp<ViewStyle>`    | Scrollable form container (padding etc)           |
+| `titleStyle`               | `StyleProp<TextStyle>`    | Modal title text                                  |
+| `labelStyle`               | `StyleProp<TextStyle>`    | All field label texts                             |
+| `inputStyle`               | `StyleProp<TextStyle>`    | All text inputs (email and message)               |
+| `buttonStyle`              | `StyleProp<ViewStyle>`    | Submit button container                           |
+| `buttonTitleStyle`         | `StyleProp<TextStyle>`    | Submit button label text                          |
+| `sentMessageContainerStyle`| `StyleProp<ViewStyle>`    | Success screen container                          |
+| `sentMessageTextStyle`     | `StyleProp<TextStyle>`    | Success message text                              |
 
 ```tsx
 <ReMarkaProvider
   styles={{
-    containerStyle:   { backgroundColor: '#FFFFFF', paddingHorizontal: 24 },
-    titleStyle:       { fontSize: 22, color: '#111827' },
-    labelStyle:       { color: '#6B7280', fontSize: 13 },
-    inputStyle:       { borderColor: '#6366F1', borderRadius: 4 },
-    buttonStyle:      { backgroundColor: '#6366F1', borderRadius: 6 },
-    buttonTitleStyle: { fontSize: 15, letterSpacing: 0.5 },
+    containerStyle:            { backgroundColor: '#FFFFFF', paddingHorizontal: 24 },
+    titleStyle:                { fontSize: 22, color: '#111827' },
+    labelStyle:                { color: '#6B7280', fontSize: 13 },
+    inputStyle:                { borderColor: '#6366F1', borderRadius: 4 },
+    buttonStyle:               { backgroundColor: '#6366F1', borderRadius: 6 },
+    buttonTitleStyle:          { fontSize: 15, letterSpacing: 0.5 },
+    sentMessageContainerStyle: { backgroundColor: '#F0FDF4' },
+    sentMessageTextStyle:      { color: '#15803D', fontSize: 20 },
   }}
 />
 ```
@@ -173,8 +219,29 @@ you only need to specify the properties you want to change.
 
 After the user taps **Send**, the success message (`sentMessage`) is always
 shown — even if the network request failed (the error is logged to console but
-does not block the UI). The success screen closes automatically after **2.5 s**
-or immediately when the user taps anywhere on it.
+does not block the UI).
+
+The success screen can be dismissed in three ways:
+- Tap the **✕ button** in the top-right corner
+- Tap **anywhere** on the screen
+- Wait **2.5 s** — it closes automatically
+
+The screen appearance is customisable via `sentMessageContainerStyle` and
+`sentMessageTextStyle` in the `styles` prop of `<ReMarkaProvider />`.
+
+---
+
+### Auto-focus behaviour
+
+When `showKeyboardImmediately` is `true` (default), the SDK automatically
+focuses the most relevant input after `keyboardDelay` ms. Focus priority:
+
+1. First **required** field (`email-required` or `text-required`)
+2. First **message** field (`text` or `text-required`)
+3. First field of any type
+4. No focus if the `fields` array is empty
+
+Set `showKeyboardImmediately: false` to disable this behaviour entirely.
 
 ---
 
