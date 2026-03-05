@@ -7,7 +7,7 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldType, FeedbackFieldValue, ShowAnimation, ReMarkaStyles } from '../types';
 import FeedbackForm from './FeedbackForm';
 
@@ -16,6 +16,7 @@ export type FeedbackModalState =
   | { phase: 'success'; message: string };
 
 interface FeedbackModalProps {
+  visible: boolean;
   state: FeedbackModalState;
   title?: string;
   fields: FieldType[];
@@ -33,6 +34,7 @@ interface FeedbackModalProps {
 }
 
 const FeedbackModal: React.FC<FeedbackModalProps> = ({
+  visible,
   state,
   title,
   fields,
@@ -48,14 +50,26 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   onSubmit,
   onClose,
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal
-      visible
+      visible={visible}
       animationType={showAnimation}
       presentationStyle="fullScreen"
       statusBarTranslucent
     >
-      <SafeAreaView style={styles.safeArea}>
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
+          },
+        ]}
+      >
         {state.phase === 'form' && (
           <FeedbackForm
             title={title}
@@ -91,13 +105,13 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
             </View>
           </TouchableWithoutFeedback>
         )}
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },

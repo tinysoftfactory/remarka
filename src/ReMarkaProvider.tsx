@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { FeedbackFieldValue, ShowOverrideConfig, ReMarkaStyles } from './types';
+import { FeedbackFieldValue, ShowOverrideConfig, ReMarkaStyles, ShowAnimation } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
 import { captureScreenshot } from './services/ScreenshotService';
 import FeedbackModal, { FeedbackModalState } from './components/FeedbackModal';
 
-// null means the modal is not mounted at all
-type ProviderState = FeedbackModalState | null;
+// Duration to wait for the Modal close animation before unmounting (ms).
+// Must be >= the native Modal animation duration (~300ms).
+const CLOSE_ANIMATION_DURATION: Record<ShowAnimation, number> = {
+  none:  0,
+  slide: 350,
+  fade:  350,
+};
 
 const SUCCESS_VISIBLE_MS = 2500;
 
@@ -15,21 +20,28 @@ interface ReMarkaProviderProps {
 }
 
 export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
-  const [modalState, setModalState] = useState<ProviderState>(null);
+  // contentState drives what is rendered inside the Modal.
+  // null means the Modal is not in the tree at all.
+  const [contentState, setContentState] = useState<FeedbackModalState | null>(null);
+  // modalVisible drives the Modal's `visible` prop.
+  // Separated from contentState so we can animate in/out before mounting/unmounting.
+  const [modalVisible, setModalVisible] = useState(false);
+
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overrideRef     = useRef<ShowOverrideConfig>({});
+  // Stored so we know how long to wait on close
+  const animationRef    = useRef<ShowAnimation>('none');
 
-  const showSuccess = useCallback((message: string) => {
+  const clearTimers = () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    if (closeTimerRef.current)   clearTimeout(closeTimerRef.current);
+  };
 
-    setModalState({ phase: 'success', message });
-
-    successTimerRef.current = setTimeout(() => {
-      setModalState(null);
-    }, SUCCESS_VISIBLE_MS);
-  }, []);
-
+  // Phase 1: mount Modal (visible=false)
+  // Phase 2: next tick → set visible=true (triggers open animation)
   const openForm = useCallback(async (override?: ShowOverrideConfig) => {
-    if (modalState !== null) return;
+    if (contentState !== null) return;
 
     const config = ReMarka.instance.getConfig();
     const withScreenshot = override?.withScreenshot ?? config.withScreenshot;
@@ -39,35 +51,49 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       screenshot = await captureScreenshot();
     }
 
-    setModalState({ phase: 'form', screenshot });
-    // Store override for use during submit — attached to state via closure
-    overrideRef.current = override ?? {};
-  }, [modalState]);
+    overrideRef.current  = override ?? {};
+    animationRef.current = (override?.showAnimation ?? config.showAnimation ?? 'none') as ShowAnimation;
 
-  const overrideRef = useRef<ShowOverrideConfig>({});
+    // Mount first
+    setContentState({ phase: 'form', screenshot });
+    // Then animate in (deferred to ensure the Modal node exists before visible flips)
+    setTimeout(() => setModalVisible(true), 0);
+  }, [contentState]);
 
+  // Phase 1: set visible=false (triggers close animation)
+  // Phase 2: after animation → unmount (contentState = null)
   const handleClose = useCallback(() => {
-    if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    setModalState(null);
+    clearTimers();
+    setModalVisible(false);
+
+    const delay = CLOSE_ANIMATION_DURATION[animationRef.current];
+    closeTimerRef.current = setTimeout(() => {
+      setContentState(null);
+    }, delay);
   }, []);
+
+  const showSuccess = useCallback((message: string) => {
+    clearTimers();
+    setContentState({ phase: 'success', message });
+
+    successTimerRef.current = setTimeout(handleClose, SUCCESS_VISIBLE_MS);
+  }, [handleClose]);
 
   const handleSubmit = useCallback(
     async (fields: FeedbackFieldValue[]) => {
       const config = ReMarka.instance.getConfig();
       const effectiveConfig = { ...config, ...overrideRef.current };
       const api = ReMarka.instance.getApi();
-      const logs = ReMarka.instance.getLogs();
-      const meta = ReMarka.instance.getMeta();
-      const screenshot = modalState?.phase === 'form' ? modalState.screenshot : null;
+      const screenshot = contentState?.phase === 'form' ? contentState.screenshot : null;
 
       try {
         await api.sendFeedback({
           projectId: config.projectId,
           tag: effectiveConfig.tag ?? 'feedback',
           fields,
-          logs,
+          logs: ReMarka.instance.getLogs(),
           screenshot,
-          meta,
+          meta: ReMarka.instance.getMeta(),
         });
       } catch (error) {
         console.warn('[ReMarka] Failed to send feedback:', error);
@@ -75,10 +101,9 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
 
       showSuccess(effectiveConfig.sentMessage ?? 'Thank you for your feedback!');
     },
-    [modalState, showSuccess],
+    [contentState, showSuccess],
   );
 
-  // Subscribe to programmatic show/hide events
   useEffect(() => {
     const unsubShow = ReMarka.instance.events.on('show', openForm);
     const unsubHide = ReMarka.instance.events.on('hide', handleClose);
@@ -88,7 +113,6 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     };
   }, [openForm, handleClose]);
 
-  // Subscribe to shake if enabled
   useEffect(() => {
     let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
     try {
@@ -96,22 +120,15 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     } catch {
       return;
     }
-
     if (!config.withShake) return;
-
-    const unsub = subscribeToShake(openForm);
-    return unsub;
+    return subscribeToShake(openForm);
   }, [openForm]);
 
-  // Clean up success timer on unmount
   useEffect(() => {
-    return () => {
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-    };
+    return clearTimers;
   }, []);
 
-  // Modal is not mounted when there's nothing to show
-  if (modalState === null) return null;
+  if (contentState === null) return null;
 
   let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
   try {
@@ -124,7 +141,8 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
 
   return (
     <FeedbackModal
-      state={modalState}
+      visible={modalVisible}
+      state={contentState}
       title={effectiveConfig.title}
       fields={effectiveConfig.fields ?? ['email', 'text']}
       showAnimation={effectiveConfig.showAnimation ?? 'none'}
