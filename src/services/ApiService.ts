@@ -3,22 +3,19 @@ import { FeedbackPayload } from '../types';
 const STUB_DELAY_MS = 800;
 
 export class ApiService {
-  private apiUrl: string | null;
+  private apiUrl: string;
   private apiKey: string;
 
-  constructor(apiUrl: string | undefined, apiKey: string) {
-    this.apiUrl = apiUrl ?? null;
+  constructor(apiUrl: string, apiKey: string) {
+    this.apiUrl = apiUrl;
     this.apiKey = apiKey;
   }
 
   async sendFeedback(payload: FeedbackPayload): Promise<void> {
-    if (!this.apiUrl) {
-      return this.stubSend(payload);
-    }
-
     const formData = new FormData();
     formData.append('data', JSON.stringify({
       projectId: payload.projectId,
+      tag: payload.tag,
       fields: payload.fields,
       logs: payload.logs,
       meta: payload.meta,
@@ -32,7 +29,7 @@ export class ApiService {
       } as unknown as Blob);
     }
 
-    const response = await fetch(`${this.apiUrl}/v1/feedback`, {
+    const response = await fetch(`${this.apiUrl}/feedback`, {
       method: 'POST',
       headers: {
         'X-Api-Key': this.apiKey,

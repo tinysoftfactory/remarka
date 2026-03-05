@@ -5,19 +5,27 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import { FieldType, FeedbackFieldValue } from '../types';
+import { FieldType, FeedbackFieldValue, ShowAnimation, ReMarkaStyles } from '../types';
 import FeedbackForm from './FeedbackForm';
 
 type ModalState =
   | { phase: 'hidden' }
-  | { phase: 'form'; screenshot: string | null }
+  | { phase: 'form'; screenshot: string | null; override: Record<string, unknown> }
   | { phase: 'success'; message: string };
 
 interface FeedbackModalProps {
   state: ModalState;
   title?: string;
   fields: FieldType[];
+  showAnimation: ShowAnimation;
+  emailPlaceholderText?: string;
+  messagePlaceholderText?: string;
+  emailLabel?: string;
+  messageLabel?: string;
+  buttonLabel?: string;
+  customStyles?: ReMarkaStyles;
   onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
   onClose: () => void;
 }
@@ -26,6 +34,13 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   state,
   title,
   fields,
+  showAnimation,
+  emailPlaceholderText,
+  messagePlaceholderText,
+  emailLabel,
+  messageLabel,
+  buttonLabel,
+  customStyles,
   onSubmit,
   onClose,
 }) => {
@@ -34,7 +49,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={showAnimation}
       presentationStyle="fullScreen"
       statusBarTranslucent
     >
@@ -44,16 +59,24 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
             title={title}
             fields={fields}
             screenshot={state.screenshot}
+            emailPlaceholderText={emailPlaceholderText}
+            messagePlaceholderText={messagePlaceholderText}
+            emailLabel={emailLabel}
+            messageLabel={messageLabel}
+            buttonLabel={buttonLabel}
+            customStyles={customStyles}
             onSubmit={onSubmit}
             onClose={onClose}
           />
         )}
 
         {state.phase === 'success' && (
-          <View style={styles.successContainer}>
-            <Text style={styles.successIcon}>✓</Text>
-            <Text style={styles.successText}>{state.message}</Text>
-          </View>
+          <TouchableWithoutFeedback onPress={onClose}>
+            <View style={styles.successContainer}>
+              <Text style={styles.successIcon}>✓</Text>
+              <Text style={styles.successText}>{state.message}</Text>
+            </View>
+          </TouchableWithoutFeedback>
         )}
       </SafeAreaView>
     </Modal>

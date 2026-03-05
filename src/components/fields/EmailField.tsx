@@ -4,6 +4,8 @@ import {
   Text,
   TextInput,
   StyleSheet,
+  StyleProp,
+  TextStyle,
 } from 'react-native';
 
 interface EmailFieldProps {
@@ -11,19 +13,32 @@ interface EmailFieldProps {
   onChange: (value: string) => void;
   required?: boolean;
   hasError?: boolean;
+  placeholder?: string;
+  label?: string;
+  inputStyle?: StyleProp<TextStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
-const EmailField: React.FC<EmailFieldProps> = ({ value, onChange, required, hasError }) => {
+const EmailField: React.FC<EmailFieldProps> = ({
+  value,
+  onChange,
+  required,
+  hasError,
+  placeholder = 'your@email.com',
+  label = 'E-mail',
+  inputStyle,
+  labelStyle,
+}) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        Email{required ? ' *' : ''}
+      <Text style={[styles.label, labelStyle]}>
+        {label}{required ? ' *' : ''}
       </Text>
       <TextInput
-        style={[styles.input, hasError && styles.inputError]}
+        style={[styles.input, hasError && styles.inputError, inputStyle]}
         value={value}
         onChangeText={onChange}
-        placeholder="your@email.com"
+        placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         keyboardType="email-address"
         autoCapitalize="none"

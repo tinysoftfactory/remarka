@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { FieldType, FeedbackFieldValue } from '../types';
+import { FieldType, FeedbackFieldValue, ReMarkaStyles } from '../types';
 import EmailField from './fields/EmailField';
 import TextField from './fields/TextField';
 
@@ -16,6 +16,12 @@ interface FeedbackFormProps {
   title?: string;
   fields: FieldType[];
   screenshot: string | null;
+  emailPlaceholderText?: string;
+  messagePlaceholderText?: string;
+  emailLabel?: string;
+  messageLabel?: string;
+  buttonLabel?: string;
+  customStyles?: ReMarkaStyles;
   onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
   onClose: () => void;
 }
@@ -28,6 +34,12 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   title,
   fields,
   screenshot,
+  emailPlaceholderText,
+  messagePlaceholderText,
+  emailLabel,
+  messageLabel,
+  buttonLabel = 'Send',
+  customStyles,
   onSubmit,
   onClose,
 }) => {
@@ -92,11 +104,11 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, customStyles?.containerStyle]}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        {title ? <Text style={styles.title}>{title}</Text> : null}
+        {title ? <Text style={[styles.title, customStyles?.titleStyle]}>{title}</Text> : null}
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
           <Text style={styles.closeButton}>✕</Text>
         </TouchableOpacity>
@@ -122,6 +134,10 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
               onChange={(v) => setValue(field, v)}
               required={field === 'email-required'}
               hasError={errors[field]}
+              placeholder={emailPlaceholderText}
+              label={emailLabel}
+              inputStyle={customStyles?.inputStyle}
+              labelStyle={customStyles?.labelStyle}
             />
           );
         }
@@ -132,12 +148,16 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
             onChange={(v) => setValue(field, v)}
             required={field === 'text-required'}
             hasError={errors[field]}
+            placeholder={messagePlaceholderText}
+            label={messageLabel}
+            inputStyle={customStyles?.inputStyle}
+            labelStyle={customStyles?.labelStyle}
           />
         );
       })}
 
       <TouchableOpacity
-        style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+        style={[styles.submitButton, loading && styles.submitButtonDisabled, customStyles?.buttonStyle]}
         onPress={handleSubmit}
         disabled={loading}
         activeOpacity={0.8}
@@ -145,7 +165,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.submitButtonText}>Send Feedback</Text>
+          <Text style={[styles.submitButtonText, customStyles?.buttonTitleStyle]}>{buttonLabel}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>

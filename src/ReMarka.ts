@@ -1,11 +1,12 @@
 import { Platform } from 'react-native';
-import { ReMarkaConfig, LogEntry, FieldType } from './types';
+import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig } from './types';
 import { SimpleEventEmitter } from './utils/EventEmitter';
 import { ApiService } from './services/ApiService';
 
 const MAX_LOGS_THRESHOLD = 500;
 const DEFAULT_LOGS_THRESHOLD = 100;
 const DEFAULT_FIELDS: FieldType[] = ['email', 'text'];
+const DEFAULT_API_URL = 'https://remarka.tsoftfactory.com/api/v1';
 const LIBRARY_VERSION = '0.1.0';
 
 class ReMarkaController {
@@ -40,12 +41,20 @@ class ReMarkaController {
       fields: DEFAULT_FIELDS,
       withShake: false,
       withScreenshot: false,
+      showAnimation: 'none',
       sentMessage: 'Thank you for your feedback!',
+      emailPlaceholderText: 'your@email.com',
+      messagePlaceholderText: 'Describe the issue or share your thoughts...',
+      emailLabel: 'E-mail',
+      messageLabel: 'Message',
+      buttonLabel: 'Send',
+      tag: 'feedback',
+      apiUrl: DEFAULT_API_URL,
       ...config,
       logsThreshold: threshold,
     };
 
-    inst._api = new ApiService(config.apiUrl, config.apiKey);
+    inst._api = new ApiService(inst._config.apiUrl!, config.apiKey);
 
     if (__DEV__) {
       console.log('[ReMarka] Initialized', inst._config);
@@ -65,8 +74,8 @@ class ReMarkaController {
     }
   }
 
-  static show(): void {
-    ReMarkaController.instance.events.emit('show');
+  static show(override?: ShowOverrideConfig): void {
+    ReMarkaController.instance.events.emit('show', override);
   }
 
   static hide(): void {

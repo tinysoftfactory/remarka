@@ -4,6 +4,8 @@ import {
   Text,
   TextInput,
   StyleSheet,
+  StyleProp,
+  TextStyle,
 } from 'react-native';
 
 interface TextFieldProps {
@@ -11,19 +13,32 @@ interface TextFieldProps {
   onChange: (value: string) => void;
   required?: boolean;
   hasError?: boolean;
+  placeholder?: string;
+  label?: string;
+  inputStyle?: StyleProp<TextStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
-const TextField: React.FC<TextFieldProps> = ({ value, onChange, required, hasError }) => {
+const TextField: React.FC<TextFieldProps> = ({
+  value,
+  onChange,
+  required,
+  hasError,
+  placeholder = 'Describe the issue or share your thoughts...',
+  label = 'Message',
+  inputStyle,
+  labelStyle,
+}) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        Message{required ? ' *' : ''}
+      <Text style={[styles.label, labelStyle]}>
+        {label}{required ? ' *' : ''}
       </Text>
       <TextInput
-        style={[styles.input, hasError && styles.inputError]}
+        style={[styles.input, hasError && styles.inputError, inputStyle]}
         value={value}
         onChangeText={onChange}
-        placeholder="Describe the issue or share your thoughts..."
+        placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         multiline
         numberOfLines={5}

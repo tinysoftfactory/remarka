@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { FeedbackFieldValue } from './types';
+import { FeedbackFieldValue, ShowOverrideConfig, ReMarkaStyles } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
 import { captureScreenshot } from './services/ScreenshotService';
@@ -7,59 +7,75 @@ import FeedbackModal from './components/FeedbackModal';
 
 type ModalState =
   | { phase: 'hidden' }
-  | { phase: 'form'; screenshot: string | null }
+  | { phase: 'form'; screenshot: string | null; override: ShowOverrideConfig }
   | { phase: 'success'; message: string };
 
 const SUCCESS_VISIBLE_MS = 2500;
 
-export const ReMarkaProvider: React.FC = () => {
+interface ReMarkaProviderProps {
+  styles?: ReMarkaStyles;
+}
+
+export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   const [modalState, setModalState] = useState<ModalState>({ phase: 'hidden' });
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const openForm = useCallback(async () => {
-    // Ignore if already open
+  const showSuccess = useCallback((message: string) => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+
+    setModalState({ phase: 'success', message });
+
+    successTimerRef.current = setTimeout(() => {
+      setModalState({ phase: 'hidden' });
+    }, SUCCESS_VISIBLE_MS);
+  }, []);
+
+  const openForm = useCallback(async (override?: ShowOverrideConfig) => {
     if (modalState.phase !== 'hidden') return;
 
     const config = ReMarka.instance.getConfig();
+    const withScreenshot = override?.withScreenshot ?? config.withScreenshot;
     let screenshot: string | null = null;
 
-    if (config.withScreenshot) {
+    if (withScreenshot) {
       screenshot = await captureScreenshot();
     }
 
-    setModalState({ phase: 'form', screenshot });
+    setModalState({ phase: 'form', screenshot, override: override ?? {} });
   }, [modalState.phase]);
 
   const handleClose = useCallback(() => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
     setModalState({ phase: 'hidden' });
   }, []);
 
   const handleSubmit = useCallback(
     async (fields: FeedbackFieldValue[]) => {
       const config = ReMarka.instance.getConfig();
+      const override = modalState.phase === 'form' ? modalState.override : {};
+      const effectiveConfig = { ...config, ...override };
       const api = ReMarka.instance.getApi();
       const logs = ReMarka.instance.getLogs();
       const meta = ReMarka.instance.getMeta();
       const screenshot = modalState.phase === 'form' ? modalState.screenshot : null;
 
-      await api.sendFeedback({
-        projectId: config.projectId,
-        fields,
-        logs,
-        screenshot,
-        meta,
-      });
+      try {
+        await api.sendFeedback({
+          projectId: config.projectId,
+          tag: effectiveConfig.tag ?? 'feedback',
+          fields,
+          logs,
+          screenshot,
+          meta,
+        });
+      } catch (error) {
+        console.warn('[ReMarka] Failed to send feedback:', error);
+      }
 
-      setModalState({
-        phase: 'success',
-        message: config.sentMessage ?? 'Thank you for your feedback!',
-      });
-
-      successTimerRef.current = setTimeout(() => {
-        setModalState({ phase: 'hidden' });
-      }, SUCCESS_VISIBLE_MS);
+      // Always show success, regardless of network errors
+      showSuccess(effectiveConfig.sentMessage ?? 'Thank you for your feedback!');
     },
-    [modalState],
+    [modalState, showSuccess],
   );
 
   // Subscribe to programmatic show/hide events
@@ -78,7 +94,6 @@ export const ReMarkaProvider: React.FC = () => {
     try {
       config = ReMarka.instance.getConfig();
     } catch {
-      // Not initialized yet — shake will not be set up
       return;
     }
 
@@ -91,9 +106,7 @@ export const ReMarkaProvider: React.FC = () => {
   // Clean up success timer on unmount
   useEffect(() => {
     return () => {
-      if (successTimerRef.current) {
-        clearTimeout(successTimerRef.current);
-      }
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
     };
   }, []);
 
@@ -104,11 +117,21 @@ export const ReMarkaProvider: React.FC = () => {
     return null;
   }
 
+  const override = modalState.phase === 'form' ? modalState.override : {};
+  const effectiveConfig = { ...config, ...override };
+
   return (
     <FeedbackModal
       state={modalState}
-      title={config.title}
-      fields={config.fields ?? ['email', 'text']}
+      title={effectiveConfig.title}
+      fields={effectiveConfig.fields ?? ['email', 'text']}
+      showAnimation={effectiveConfig.showAnimation ?? 'none'}
+      emailPlaceholderText={effectiveConfig.emailPlaceholderText}
+      messagePlaceholderText={effectiveConfig.messagePlaceholderText}
+      emailLabel={effectiveConfig.emailLabel}
+      messageLabel={effectiveConfig.messageLabel}
+      buttonLabel={effectiveConfig.buttonLabel}
+      customStyles={styles}
       onSubmit={handleSubmit}
       onClose={handleClose}
     />
