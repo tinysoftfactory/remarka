@@ -7,7 +7,7 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldType, FeedbackFieldValue, ShowAnimation, ReMarkaStyles } from '../types';
 import FeedbackForm from './FeedbackForm';
 
@@ -33,12 +33,12 @@ interface FeedbackModalProps {
   onClose: () => void;
 }
 
-const FeedbackModal: React.FC<FeedbackModalProps> = ({
-  visible,
+// Inner component that can safely call useSafeAreaInsets()
+// because it is always rendered inside SafeAreaProvider below.
+const ModalContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation'>> = ({
   state,
   title,
   fields,
-  showAnimation,
   emailPlaceholderText,
   messagePlaceholderText,
   emailLabel,
@@ -53,59 +53,71 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   const insets = useSafeAreaInsets();
 
   return (
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+    >
+      {state.phase === 'form' && (
+        <FeedbackForm
+          title={title}
+          fields={fields}
+          screenshot={state.screenshot}
+          emailPlaceholderText={emailPlaceholderText}
+          messagePlaceholderText={messagePlaceholderText}
+          emailLabel={emailLabel}
+          messageLabel={messageLabel}
+          buttonLabel={buttonLabel}
+          showKeyboardImmediately={showKeyboardImmediately}
+          keyboardDelay={keyboardDelay}
+          customStyles={customStyles}
+          onSubmit={onSubmit}
+          onClose={onClose}
+        />
+      )}
+
+      {state.phase === 'success' && (
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={[styles.successContainer, customStyles?.sentMessageContainerStyle]}>
+            <TouchableOpacity
+              style={styles.successCloseButton}
+              onPress={onClose}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Text style={styles.successCloseButtonText}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.successIcon}>✓</Text>
+            <Text style={[styles.successText, customStyles?.sentMessageTextStyle]}>
+              {state.message}
+            </Text>
+          </View>
+        </TouchableWithoutFeedback>
+      )}
+    </View>
+  );
+};
+
+const FeedbackModal: React.FC<FeedbackModalProps> = ({
+  visible,
+  showAnimation,
+  ...rest
+}) => {
+  return (
     <Modal
       visible={visible}
       animationType={showAnimation}
       presentationStyle="fullScreen"
       statusBarTranslucent
     >
-      <View
-        style={[
-          styles.container,
-          {
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
-          },
-        ]}
-      >
-        {state.phase === 'form' && (
-          <FeedbackForm
-            title={title}
-            fields={fields}
-            screenshot={state.screenshot}
-            emailPlaceholderText={emailPlaceholderText}
-            messagePlaceholderText={messagePlaceholderText}
-            emailLabel={emailLabel}
-            messageLabel={messageLabel}
-            buttonLabel={buttonLabel}
-            showKeyboardImmediately={showKeyboardImmediately}
-            keyboardDelay={keyboardDelay}
-            customStyles={customStyles}
-            onSubmit={onSubmit}
-            onClose={onClose}
-          />
-        )}
-
-        {state.phase === 'success' && (
-          <TouchableWithoutFeedback onPress={onClose}>
-            <View style={[styles.successContainer, customStyles?.sentMessageContainerStyle]}>
-              <TouchableOpacity
-                style={styles.successCloseButton}
-                onPress={onClose}
-                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-              >
-                <Text style={styles.successCloseButtonText}>✕</Text>
-              </TouchableOpacity>
-              <Text style={styles.successIcon}>✓</Text>
-              <Text style={[styles.successText, customStyles?.sentMessageTextStyle]}>
-                {state.message}
-              </Text>
-            </View>
-          </TouchableWithoutFeedback>
-        )}
-      </View>
+      <SafeAreaProvider>
+        <ModalContent {...rest} />
+      </SafeAreaProvider>
     </Modal>
   );
 };
