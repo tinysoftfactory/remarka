@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { FeedbackFieldValue, ShowOverrideConfig, ReMarkaStyles, ShowAnimation } from './types';
+import React, { useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
 import { captureScreenshot } from './services/ScreenshotService';
 import FeedbackModal, { FeedbackModalState } from './components/FeedbackModal';
+import WelcomeToast from './components/WelcomeToast';
 
 // Duration to wait for the Modal close animation before unmounting (ms).
 // Must be >= the native Modal animation duration (~300ms).
@@ -14,6 +15,8 @@ const CLOSE_ANIMATION_DURATION: Record<ShowAnimation, number> = {
 };
 
 const SUCCESS_VISIBLE_MS = 2500;
+const DEFAULT_WELCOME_MESSAGE = "Shake your device if you'd like to send feedback.";
+const DEFAULT_WELCOME_DURATION = 3000;
 
 interface ReMarkaProviderProps {
   styles?: ReMarkaStyles;
@@ -27,6 +30,11 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   // Separated from contentState so we can animate in/out before mounting/unmounting.
   const [modalVisible, setModalVisible] = useState(false);
 
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState(DEFAULT_WELCOME_MESSAGE);
+  const [welcomeIcon, setWelcomeIcon] = useState<React.ReactNode>(undefined);
+  const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overrideRef     = useRef<ShowOverrideConfig>({});
@@ -36,7 +44,24 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   const clearTimers = () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
     if (closeTimerRef.current)   clearTimeout(closeTimerRef.current);
+    if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
   };
+
+  const openWelcome = useCallback((override?: WelcomeOverrideConfig) => {
+    let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
+    try { config = ReMarka.instance.getConfig(); } catch { return; }
+
+    const message  = override?.welcomeMessage ?? config.welcomeMessage ?? DEFAULT_WELCOME_MESSAGE;
+    const duration = override?.welcomeDuration ?? config.welcomeDuration ?? DEFAULT_WELCOME_DURATION;
+    const icon     = override?.welcomeIcon !== undefined ? override.welcomeIcon : config.welcomeIcon;
+
+    setWelcomeMessage(message);
+    setWelcomeIcon(icon as ReactNode);
+    setWelcomeVisible(true);
+
+    if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+    welcomeTimerRef.current = setTimeout(() => setWelcomeVisible(false), duration);
+  }, []);
 
   // Phase 1: mount Modal (visible=false)
   // Phase 2: next tick → set visible=true (triggers open animation)
@@ -110,13 +135,26 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   );
 
   useEffect(() => {
-    const unsubShow = ReMarka.instance.events.on('show', openForm);
-    const unsubHide = ReMarka.instance.events.on('hide', handleClose);
+    const unsubShow    = ReMarka.instance.events.on('show', openForm);
+    const unsubHide    = ReMarka.instance.events.on('hide', handleClose);
+    const unsubWelcome = ReMarka.instance.events.on('welcome', openWelcome);
     return () => {
       unsubShow();
       unsubHide();
+      unsubWelcome();
     };
-  }, [openForm, handleClose]);
+  }, [openForm, handleClose, openWelcome]);
+
+  // Auto-show welcome hint once on mount when withShake is enabled
+  useEffect(() => {
+    let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
+    try { config = ReMarka.instance.getConfig(); } catch { return; }
+
+    if (config.withShake && config.withWelcome !== false) {
+      openWelcome();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
@@ -133,7 +171,16 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     return clearTimers;
   }, []);
 
-  if (contentState === null) return null;
+  if (contentState === null) {
+    return (
+      <WelcomeToast
+        visible={welcomeVisible}
+        message={welcomeMessage}
+        icon={welcomeIcon}
+        onDismiss={() => setWelcomeVisible(false)}
+      />
+    );
+  }
 
   let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
   try {

@@ -4,6 +4,7 @@ export type {
   ReMarkaConfig,
   ReMarkaStyles,
   ShowOverrideConfig,
+  WelcomeOverrideConfig,
   ShowAnimation,
   FieldType,
   LogEntry,

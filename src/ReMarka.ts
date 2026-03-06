@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig } from './types';
+import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig, WelcomeOverrideConfig } from './types';
 import { SimpleEventEmitter } from './utils/EventEmitter';
 import { ApiService } from './services/ApiService';
 
@@ -82,6 +82,10 @@ class ReMarkaController {
 
   static hide(): void {
     ReMarkaController.instance.events.emit('hide');
+  }
+
+  static showWelcome(override?: WelcomeOverrideConfig): void {
+    ReMarkaController.instance.events.emit('welcome', override);
   }
 
   static async send(data: { email?: string; message?: string; tag?: string } = {}): Promise<void> {

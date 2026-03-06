@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleProp, ViewStyle, TextStyle } from 'react-native';
 
 export interface ReMarkaStyles {
@@ -68,6 +69,21 @@ export interface ReMarkaConfig {
   screenshotQuality?: number;
   /** Max width in pixels for screenshot downscaling (default: 800) */
   screenshotMaxWidth?: number;
+  /** Show a welcome hint after init when withShake is true (default: true) */
+  withWelcome?: boolean;
+  /** Text shown in the welcome hint (default: "Shake your device if you'd like to send feedback.") */
+  welcomeMessage?: string;
+  /** How long the welcome hint is visible in ms (default: 3000) */
+  welcomeDuration?: number;
+  /** Custom React element rendered above the welcome message (replaces the default shake icon) */
+  welcomeIcon?: React.ReactNode;
+}
+
+export interface WelcomeOverrideConfig {
+  welcomeMessage?: string;
+  welcomeDuration?: number;
+  /** Custom React element rendered above the welcome message (replaces the default shake icon) */
+  welcomeIcon?: React.ReactNode;
 }
 
 export interface LogEntry {
@@ -99,9 +115,10 @@ export type ShowOverrideConfig = Partial<
   Omit<ReMarkaConfig, 'projectId' | 'apiKey' | 'apiUrl'>
 >;
 
-export type ReMarkaEvent = 'show' | 'hide';
+export type ReMarkaEvent = 'show' | 'hide' | 'welcome';
 
 export interface ReMarkaEventMap {
   show: ShowOverrideConfig | undefined;
   hide: undefined;
+  welcome: WelcomeOverrideConfig | undefined;
 }
