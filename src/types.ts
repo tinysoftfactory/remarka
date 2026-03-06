@@ -43,6 +43,8 @@ export interface ReMarkaConfig {
   title?: string;
   /** Message shown after feedback is successfully sent */
   sentMessage?: string;
+  /** Custom React element rendered above the sent message (replaces the default ✓ icon) */
+  sentMessageIcon?: React.ReactNode;
   /** Fields to display in the feedback form (default: ['email', 'text']) */
   fields?: FieldType[];
   /** Base URL of the ReMarka backend (default: 'https://remarka.tsoftfactory.com/api/v1') */
@@ -61,6 +63,8 @@ export interface ReMarkaConfig {
   buttonLabel?: string;
   /** Tag sent along with feedback for categorisation (default: 'feedback') */
   tag?: string;
+  /** Custom metadata merged into every feedback submission (e.g. app version, user id) */
+  meta?: Record<string, unknown>;
   /** Automatically focus the first relevant input after the form opens (default: true) */
   showKeyboardImmediately?: boolean;
   /** Delay in ms before the keyboard is shown after the form opens (default: 1500) */
@@ -115,6 +119,7 @@ export interface FeedbackPayload {
     timestamp: number;
     platform: string;
     version: string;
+    [key: string]: unknown;
   };
 }
 

@@ -17,6 +17,7 @@ class ReMarkaController {
   private _config: ReMarkaConfig | null = null;
   private _logs: LogEntry[] = [];
   private _api: ApiService | null = null;
+  private _userMeta: Record<string, unknown> = {};
 
   private constructor() {}
 
@@ -57,6 +58,7 @@ class ReMarkaController {
     };
 
     inst._api = new ApiService(inst._config.apiUrl!, config.apiKey);
+    inst._userMeta = config.meta ?? {};
 
     if (__DEV__) {
       console.log('[ReMarka] Initialized', inst._config);
@@ -78,6 +80,10 @@ class ReMarkaController {
 
   static show(override?: ShowOverrideConfig): void {
     ReMarkaController.instance.events.emit('show', override);
+  }
+
+  static setMeta(meta: Record<string, unknown>): void {
+    ReMarkaController.instance._userMeta = meta;
   }
 
   static hide(): void {
@@ -137,6 +143,7 @@ class ReMarkaController {
 
   getMeta() {
     return {
+      ...this._userMeta,
       timestamp: Date.now(),
       platform: Platform.OS,
       version: LIBRARY_VERSION,

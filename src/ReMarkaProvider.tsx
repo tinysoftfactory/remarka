@@ -108,9 +108,9 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     }, delay);
   }, []);
 
-  const showSuccess = useCallback((message: string) => {
+  const showSuccess = useCallback((message: string, icon?: ReactNode) => {
     clearTimers();
-    setContentState({ phase: 'success', message });
+    setContentState({ phase: 'success', message, icon });
 
     successTimerRef.current = setTimeout(handleClose, SUCCESS_VISIBLE_MS);
   }, [handleClose]);
@@ -136,7 +136,10 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       }
 
       ReMarka.instance.clearLogs();
-      showSuccess(effectiveConfig.sentMessage ?? 'Thank you for your feedback!');
+      showSuccess(
+        effectiveConfig.sentMessage ?? 'Thank you for your feedback!',
+        effectiveConfig.sentMessageIcon as ReactNode,
+      );
     },
     [contentState, showSuccess],
   );

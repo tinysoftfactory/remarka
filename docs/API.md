@@ -69,7 +69,8 @@ Content-Type: `multipart/form-data`
   "meta": {
     "timestamp": 1700000000000,
     "platform": "ios | android",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "...": "any additional fields set via ReMarka.init({ meta }) or ReMarka.setMeta()"
   }
 }
 ```
@@ -169,6 +170,8 @@ CREATE TABLE feedback (
 - The client always shows the success screen after submission, regardless of
   whether the request succeeded or failed. Errors are logged to the device
   console but do not interrupt the user flow.
+- The in-memory log buffer is cleared on the client after each submission, so
+  subsequent submissions contain only new log entries.
 - To test against a local server, pass `apiUrl: 'http://localhost:3000/api/v1'`
   to `ReMarka.init()`.
 - The endpoint path relative to `apiUrl` is `/feedback`

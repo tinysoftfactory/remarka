@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import {
   Modal,
   View,
@@ -13,7 +13,7 @@ import FeedbackForm from './FeedbackForm';
 
 export type FeedbackModalState =
   | { phase: 'form'; screenshot: string | null }
-  | { phase: 'success'; message: string };
+  | { phase: 'success'; message: string; icon?: ReactNode };
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -92,7 +92,10 @@ const ModalContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation
             >
               <Text style={styles.successCloseButtonText}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.successIcon}>✓</Text>
+            {state.icon !== undefined
+              ? state.icon
+              : <Text style={styles.successIcon}>✓</Text>
+            }
             <Text style={[styles.successText, customStyles?.sentMessageTextStyle]}>
               {state.message}
             </Text>
