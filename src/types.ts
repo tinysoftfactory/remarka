@@ -37,6 +37,8 @@ export interface ReMarkaConfig {
   logsThreshold?: number;
   /** Enable shake-to-show feedback form (default: false) */
   withShake?: boolean;
+  /** Shake sensitivity threshold in G-force units (default: 1.8). Lower = more sensitive. */
+  shakeThreshold?: number;
   /** Take a screenshot before showing the feedback form (default: false) */
   withScreenshot?: boolean;
   /** Title displayed at the top of the feedback modal */

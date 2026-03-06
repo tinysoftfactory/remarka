@@ -174,7 +174,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       return;
     }
     if (!config.withShake) return;
-    return subscribeToShake(openForm);
+    return subscribeToShake(openForm, config.shakeThreshold);
   }, [openForm]);
 
   useEffect(() => {
