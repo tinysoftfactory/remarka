@@ -3,6 +3,8 @@ import {
   View,
   Text,
   TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
   StyleSheet,
   StyleProp,
   TextStyle,
@@ -17,6 +19,11 @@ interface TextFieldProps {
   label?: string;
   inputStyle?: StyleProp<TextStyle>;
   labelStyle?: StyleProp<TextStyle>;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  showInlineSubmit?: boolean;
+  inlineSubmitLoading?: boolean;
+  onInlineSubmit?: () => void;
 }
 
 const TextField = forwardRef<TextInput, TextFieldProps>(({
@@ -28,23 +35,45 @@ const TextField = forwardRef<TextInput, TextFieldProps>(({
   label = 'Message',
   inputStyle,
   labelStyle,
+  onFocus,
+  onBlur,
+  showInlineSubmit,
+  inlineSubmitLoading,
+  onInlineSubmit,
 }, ref) => {
   return (
     <View style={styles.container}>
       <Text style={[styles.label, labelStyle]}>
         {label}{required ? ' *' : ''}
       </Text>
-      <TextInput
-        ref={ref}
-        style={[styles.input, hasError && styles.inputError, inputStyle]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        multiline
-        numberOfLines={5}
-        textAlignVertical="top"
-      />
+      <View>
+        <TextInput
+          ref={ref}
+          style={[styles.input, hasError && styles.inputError, inputStyle]}
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor="#9CA3AF"
+          multiline
+          numberOfLines={5}
+          textAlignVertical="top"
+          onFocus={onFocus}
+          onBlur={onBlur}
+        />
+        {showInlineSubmit && (
+          <TouchableOpacity
+            style={styles.inlineButton}
+            onPress={onInlineSubmit}
+            disabled={inlineSubmitLoading}
+            activeOpacity={0.8}
+          >
+            {inlineSubmitLoading
+              ? <ActivityIndicator color="#FFFFFF" size="small" />
+              : <Text style={styles.inlineButtonText}>↑</Text>
+            }
+          </TouchableOpacity>
+        )}
+      </View>
       {hasError && (
         <Text style={styles.errorText}>This field is required</Text>
       )}
@@ -70,6 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    paddingRight: 48,
     fontSize: 15,
     color: '#111827',
     backgroundColor: '#FFFFFF',
@@ -82,6 +112,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 12,
     color: '#EF4444',
+  },
+  inlineButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
   },
 });
 

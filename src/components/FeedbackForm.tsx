@@ -69,6 +69,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   );
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
+  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   // One ref per field type
   const inputRefs = useRef<Partial<Record<FieldType, React.RefObject<TextInput>>>>(
@@ -195,22 +196,29 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
             label={messageLabel}
             inputStyle={customStyles?.inputStyle}
             labelStyle={customStyles?.labelStyle}
+            onFocus={() => setTextFieldFocused(true)}
+            onBlur={() => setTextFieldFocused(false)}
+            showInlineSubmit={textFieldFocused}
+            inlineSubmitLoading={loading}
+            onInlineSubmit={handleSubmit}
           />
         );
       })}
 
-      <TouchableOpacity
-        style={[styles.submitButton, loading && styles.submitButtonDisabled, customStyles?.buttonStyle]}
-        onPress={handleSubmit}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={[styles.submitButtonText, customStyles?.buttonTitleStyle]}>{buttonLabel}</Text>
-        )}
-      </TouchableOpacity>
+      {!textFieldFocused && (
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.submitButtonDisabled, customStyles?.buttonStyle]}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={[styles.submitButtonText, customStyles?.buttonTitleStyle]}>{buttonLabel}</Text>
+          )}
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };

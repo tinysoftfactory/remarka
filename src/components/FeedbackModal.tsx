@@ -1,11 +1,11 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
   Text,
   StyleSheet,
   TouchableWithoutFeedback,
-  TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldType, FeedbackFieldValue, ShowAnimation, ReMarkaStyles } from '../types';
@@ -35,8 +35,8 @@ interface FeedbackModalProps {
 
 // Inner component that can safely call useSafeAreaInsets()
 // because it is always rendered inside SafeAreaProvider below.
-const ModalContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation'>> = ({
-  state,
+const FormContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation' | 'state'> & { screenshot: string | null }> = ({
+  screenshot,
   title,
   fields,
   emailPlaceholderText,
@@ -55,7 +55,7 @@ const ModalContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation
   return (
     <View
       style={[
-        styles.container,
+        styles.formContainer,
         {
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
@@ -64,98 +64,148 @@ const ModalContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation
         },
       ]}
     >
-      {state.phase === 'form' && (
-        <FeedbackForm
-          title={title}
-          fields={fields}
-          screenshot={state.screenshot}
-          emailPlaceholderText={emailPlaceholderText}
-          messagePlaceholderText={messagePlaceholderText}
-          emailLabel={emailLabel}
-          messageLabel={messageLabel}
-          buttonLabel={buttonLabel}
-          showKeyboardImmediately={showKeyboardImmediately}
-          keyboardDelay={keyboardDelay}
-          customStyles={customStyles}
-          onSubmit={onSubmit}
-          onClose={onClose}
-        />
-      )}
-
-      {state.phase === 'success' && (
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={[styles.successContainer, customStyles?.sentMessageContainerStyle]}>
-            <TouchableOpacity
-              style={styles.successCloseButton}
-              onPress={onClose}
-              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-            >
-              <Text style={styles.successCloseButtonText}>✕</Text>
-            </TouchableOpacity>
-            {state.icon !== undefined
-              ? state.icon
-              : <Text style={styles.successIcon}>✓</Text>
-            }
-            <Text style={[styles.successText, customStyles?.sentMessageTextStyle]}>
-              {state.message}
-            </Text>
-          </View>
-        </TouchableWithoutFeedback>
-      )}
+      <FeedbackForm
+        title={title}
+        fields={fields}
+        screenshot={screenshot}
+        emailPlaceholderText={emailPlaceholderText}
+        messagePlaceholderText={messagePlaceholderText}
+        emailLabel={emailLabel}
+        messageLabel={messageLabel}
+        buttonLabel={buttonLabel}
+        showKeyboardImmediately={showKeyboardImmediately}
+        keyboardDelay={keyboardDelay}
+        customStyles={customStyles}
+        onSubmit={onSubmit}
+        onClose={onClose}
+      />
     </View>
+  );
+};
+
+interface SuccessOverlayProps {
+  visible: boolean;
+  message: string;
+  icon?: ReactNode;
+  customStyles?: ReMarkaStyles;
+  onClose: () => void;
+}
+
+const SuccessOverlay: React.FC<SuccessOverlayProps> = ({ visible, message, icon, customStyles, onClose }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? 250 : 200,
+      useNativeDriver: true,
+    }).start();
+  }, [visible, opacity]);
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <Animated.View style={[styles.overlay, { opacity }]}>
+          <TouchableWithoutFeedback>
+            <View style={[styles.popup, customStyles?.sentMessageContainerStyle]}>
+              {icon !== undefined
+                ? icon
+                : <Text style={styles.successIcon}>✓</Text>
+              }
+              <Text style={[styles.successText, customStyles?.sentMessageTextStyle]}>
+                {message}
+              </Text>
+            </View>
+          </TouchableWithoutFeedback>
+        </Animated.View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 };
 
 const FeedbackModal: React.FC<FeedbackModalProps> = ({
   visible,
   showAnimation,
+  state,
+  customStyles,
+  onClose,
   ...rest
 }) => {
+  const isForm    = state.phase === 'form';
+  const isSuccess = state.phase === 'success';
+
   return (
-    <Modal
-      visible={visible}
-      animationType={showAnimation}
-      presentationStyle="fullScreen"
-      statusBarTranslucent
-    >
-      <SafeAreaProvider>
-        <ModalContent {...rest} />
-      </SafeAreaProvider>
-    </Modal>
+    <>
+      <Modal
+        visible={visible && isForm}
+        animationType={showAnimation}
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+      >
+        <SafeAreaProvider>
+          <FormContent
+            screenshot={isForm ? state.screenshot : null}
+            customStyles={customStyles}
+            onClose={onClose}
+            {...rest}
+          />
+        </SafeAreaProvider>
+      </Modal>
+
+      <SuccessOverlay
+        visible={visible && isSuccess}
+        message={isSuccess ? state.message : ''}
+        icon={isSuccess ? state.icon : undefined}
+        customStyles={customStyles}
+        onClose={onClose}
+      />
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  formContainer: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  successContainer: {
+  overlay: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 32,
   },
-  successCloseButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-  },
-  successCloseButtonText: {
-    fontSize: 18,
-    color: '#6B7280',
-    lineHeight: 24,
+  popup: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 28,
+    maxWidth: 320,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
   },
   successIcon: {
-    fontSize: 56,
+    fontSize: 48,
     color: '#16A34A',
     marginBottom: 16,
   },
   successText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
     color: '#111827',
     textAlign: 'center',
+    lineHeight: 24,
   },
 });
 
