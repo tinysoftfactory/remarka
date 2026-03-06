@@ -3,10 +3,12 @@ import {
   Modal,
   View,
   Text,
-  Image,
   TouchableWithoutFeedback,
   StyleSheet,
   Animated,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 
 const shakeIcon = require('../assets/shake.png');
@@ -42,10 +44,12 @@ interface WelcomeToastProps {
   visible: boolean;
   message: string;
   icon?: React.ReactNode;
+  popupStyle?: StyleProp<ViewStyle>;
+  messageStyle?: StyleProp<TextStyle>;
   onDismiss: () => void;
 }
 
-const WelcomeToast: React.FC<WelcomeToastProps> = ({ visible, message, icon, onDismiss }) => {
+const WelcomeToast: React.FC<WelcomeToastProps> = ({ visible, message, icon, popupStyle, messageStyle, onDismiss }) => {
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const shakeX = useShakeAnimation();
 
@@ -78,9 +82,9 @@ const WelcomeToast: React.FC<WelcomeToastProps> = ({ visible, message, icon, onD
       <TouchableWithoutFeedback onPress={onDismiss}>
         <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
           <TouchableWithoutFeedback>
-            <View style={styles.popup}>
+            <View style={[styles.popup, popupStyle]}>
               {iconElement}
-              <Text style={styles.message}>{message}</Text>
+              <Text style={[styles.message, messageStyle]}>{message}</Text>
             </View>
           </TouchableWithoutFeedback>
         </Animated.View>

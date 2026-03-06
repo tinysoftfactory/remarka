@@ -77,6 +77,10 @@ export interface ReMarkaConfig {
   welcomeDuration?: number;
   /** Custom React element rendered above the welcome message (replaces the default shake icon) */
   welcomeIcon?: React.ReactNode;
+  /** Style for the welcome popup container */
+  welcomePopupStyle?: StyleProp<ViewStyle>;
+  /** Style for the welcome message text */
+  welcomeMessageStyle?: StyleProp<TextStyle>;
 }
 
 export interface WelcomeOverrideConfig {
@@ -84,6 +88,10 @@ export interface WelcomeOverrideConfig {
   welcomeDuration?: number;
   /** Custom React element rendered above the welcome message (replaces the default shake icon) */
   welcomeIcon?: React.ReactNode;
+  /** Style for the welcome popup container */
+  welcomePopupStyle?: StyleProp<ViewStyle>;
+  /** Style for the welcome message text */
+  welcomeMessageStyle?: StyleProp<TextStyle>;
 }
 
 export interface LogEntry {

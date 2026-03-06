@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
@@ -33,6 +34,8 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState(DEFAULT_WELCOME_MESSAGE);
   const [welcomeIcon, setWelcomeIcon] = useState<React.ReactNode>(undefined);
+  const [welcomePopupStyle, setWelcomePopupStyle] = useState<StyleProp<ViewStyle>>(undefined);
+  const [welcomeMessageStyle, setWelcomeMessageStyle] = useState<StyleProp<TextStyle>>(undefined);
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,10 +56,14 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
 
     const message  = override?.welcomeMessage ?? config.welcomeMessage ?? DEFAULT_WELCOME_MESSAGE;
     const duration = override?.welcomeDuration ?? config.welcomeDuration ?? DEFAULT_WELCOME_DURATION;
-    const icon     = override?.welcomeIcon !== undefined ? override.welcomeIcon : config.welcomeIcon;
+    const icon        = override?.welcomeIcon !== undefined ? override.welcomeIcon : config.welcomeIcon;
+    const popupStyle  = override?.welcomePopupStyle ?? config.welcomePopupStyle;
+    const messageStyle = override?.welcomeMessageStyle ?? config.welcomeMessageStyle;
 
     setWelcomeMessage(message);
     setWelcomeIcon(icon as ReactNode);
+    setWelcomePopupStyle(popupStyle);
+    setWelcomeMessageStyle(messageStyle);
     setWelcomeVisible(true);
 
     if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
@@ -177,6 +184,8 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
         visible={welcomeVisible}
         message={welcomeMessage}
         icon={welcomeIcon}
+        popupStyle={welcomePopupStyle}
+        messageStyle={welcomeMessageStyle}
         onDismiss={() => setWelcomeVisible(false)}
       />
     );
