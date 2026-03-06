@@ -48,7 +48,11 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     let screenshot: string | null = null;
 
     if (withScreenshot) {
-      screenshot = await captureScreenshot();
+      screenshot = await captureScreenshot(
+        undefined,
+        override?.screenshotQuality ?? config.screenshotQuality,
+        override?.screenshotMaxWidth ?? config.screenshotMaxWidth,
+      );
     }
 
     overrideRef.current  = override ?? {};
@@ -99,6 +103,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
         console.warn('[ReMarka] Failed to send feedback:', error);
       }
 
+      ReMarka.instance.clearLogs();
       showSuccess(effectiveConfig.sentMessage ?? 'Thank you for your feedback!');
     },
     [contentState, showSuccess],

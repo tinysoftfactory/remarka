@@ -120,6 +120,10 @@ class ReMarkaController {
     return this._logs.slice(-threshold);
   }
 
+  clearLogs(): void {
+    this._logs = [];
+  }
+
   getApi(): ApiService {
     if (!this._api) {
       throw new Error('[ReMarka] Not initialized. Call ReMarka.init() before using ReMarkaProvider.');

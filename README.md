@@ -9,7 +9,7 @@ or a programmatic call.
 ## Installation
 
 ```bash
-yarn add remarka
+yarn add remarka react-native-safe-area-context
 
 # Optional — required only if the features are enabled:
 yarn add react-native-shake       # withShake: true
@@ -17,6 +17,11 @@ yarn add react-native-view-shot   # withScreenshot: true
 
 npx pod-install   # iOS
 ```
+
+> **Note:** `react-native-safe-area-context` is a required dependency.
+> ReMarka bundles its own `SafeAreaProvider` inside the modal, so you do **not**
+> need to add one to your app — but if your app already uses it, both will
+> coexist without conflict.
 
 ---
 
@@ -180,7 +185,8 @@ try {
 ### `<ReMarkaProvider styles? />`
 
 Mounts the feedback modal and wires up shake detection. Place it once near the
-root of your tree, outside `SafeAreaView` so it can cover the full screen.
+root of your tree. No `SafeAreaProvider` setup is required — ReMarka manages
+safe area insets internally.
 
 #### `styles` prop — `ReMarkaStyles`
 

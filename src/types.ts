@@ -64,6 +64,10 @@ export interface ReMarkaConfig {
   showKeyboardImmediately?: boolean;
   /** Delay in ms before the keyboard is shown after the form opens (default: 1500) */
   keyboardDelay?: number;
+  /** JPEG quality for screenshot compression, 0–1 (default: 0.5) */
+  screenshotQuality?: number;
+  /** Max width in pixels for screenshot downscaling (default: 800) */
+  screenshotMaxWidth?: number;
 }
 
 export interface LogEntry {

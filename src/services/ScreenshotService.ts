@@ -11,6 +11,8 @@ import { View } from 'react-native';
 
 export async function captureScreenshot(
   viewRef?: RefObject<View>,
+  quality = 0.5,
+  maxWidth = 800,
 ): Promise<string | null> {
   let captureScreen: ((options?: Record<string, unknown>) => Promise<string>) | null = null;
   let captureRef: ((ref: RefObject<View>, options?: Record<string, unknown>) => Promise<string>) | null = null;
@@ -29,7 +31,7 @@ export async function captureScreenshot(
   }
 
   try {
-    const options = { format: 'jpg', quality: 0.7 };
+    const options = { format: 'jpg', quality, width: maxWidth };
 
     if (viewRef?.current && captureRef) {
       return await captureRef(viewRef, options);
