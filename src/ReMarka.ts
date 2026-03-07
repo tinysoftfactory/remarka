@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig, WelcomeOverrideConfig } from './types';
+import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig, WelcomeOverrideConfig, REMARKA_EVENTS } from './types';
 import { SimpleEventEmitter } from './utils/EventEmitter';
 import { ApiService } from './services/ApiService';
 
@@ -79,7 +79,7 @@ class ReMarkaController {
   }
 
   static show(override?: ShowOverrideConfig): void {
-    ReMarkaController.instance.events.emit('show', override);
+    ReMarkaController.instance.events.emit(REMARKA_EVENTS.SHOW, override);
   }
 
   static setMeta(meta: Record<string, unknown>): void {
@@ -87,11 +87,18 @@ class ReMarkaController {
   }
 
   static hide(): void {
-    ReMarkaController.instance.events.emit('hide');
+    ReMarkaController.instance.events.emit(REMARKA_EVENTS.HIDE);
+  }
+
+  static on<K extends keyof import('./types').ReMarkaEventMap>(
+    event: K,
+    handler: (payload: import('./types').ReMarkaEventMap[K]) => void,
+  ): () => void {
+    return ReMarkaController.instance.events.on(event, handler as (payload: unknown) => void);
   }
 
   static showWelcome(override?: WelcomeOverrideConfig): void {
-    ReMarkaController.instance.events.emit('welcome', override);
+    ReMarkaController.instance.events.emit(REMARKA_EVENTS.WELCOME, override);
   }
 
   static async send(data: { email?: string; message?: string; tag?: string } = {}): Promise<void> {

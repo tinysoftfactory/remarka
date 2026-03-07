@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { StyleProp, ViewStyle, TextStyle } from 'react-native';
-import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation } from './types';
+import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation, REMARKA_EVENTS } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
 import { captureScreenshot } from './services/ScreenshotService';
@@ -93,7 +93,10 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     // Mount first
     setContentState({ phase: 'form', screenshot });
     // Then animate in (deferred to ensure the Modal node exists before visible flips)
-    setTimeout(() => setModalVisible(true), 0);
+    setTimeout(() => {
+      setModalVisible(true);
+      ReMarka.instance.events.emit(REMARKA_EVENTS.OPEN);
+    }, 0);
   }, [contentState]);
 
   // Phase 1: set visible=false (triggers close animation)
@@ -101,6 +104,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   const handleClose = useCallback(() => {
     clearTimers();
     setModalVisible(false);
+    ReMarka.instance.events.emit(REMARKA_EVENTS.CLOSE);
 
     const delay = CLOSE_ANIMATION_DURATION[animationRef.current];
     closeTimerRef.current = setTimeout(() => {
@@ -135,6 +139,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
         console.warn('[ReMarka] Failed to send feedback:', error);
       }
 
+      ReMarka.instance.events.emit(REMARKA_EVENTS.SENT, fields);
       ReMarka.instance.clearLogs();
       showSuccess(
         effectiveConfig.sentMessage ?? 'Thank you for your feedback!',
@@ -145,9 +150,9 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   );
 
   useEffect(() => {
-    const unsubShow    = ReMarka.instance.events.on('show', openForm);
-    const unsubHide    = ReMarka.instance.events.on('hide', handleClose);
-    const unsubWelcome = ReMarka.instance.events.on('welcome', openWelcome);
+    const unsubShow    = ReMarka.instance.events.on(REMARKA_EVENTS.SHOW, openForm);
+    const unsubHide    = ReMarka.instance.events.on(REMARKA_EVENTS.HIDE, handleClose);
+    const unsubWelcome = ReMarka.instance.events.on(REMARKA_EVENTS.WELCOME, openWelcome);
     return () => {
       unsubShow();
       unsubHide();

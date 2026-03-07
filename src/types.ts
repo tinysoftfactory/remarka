@@ -130,10 +130,25 @@ export type ShowOverrideConfig = Partial<
   Omit<ReMarkaConfig, 'projectId' | 'apiKey' | 'apiUrl'>
 >;
 
-export type ReMarkaEvent = 'show' | 'hide' | 'welcome';
+export const REMARKA_EVENTS = {
+  SHOW: 'show',
+  HIDE: 'hide',
+  WELCOME: 'welcome',
+  OPEN: 'open',
+  SENT: 'sent',
+  CLOSE: 'close',
+} as const;
+
+export type ReMarkaEvent = typeof REMARKA_EVENTS[keyof typeof REMARKA_EVENTS];
 
 export interface ReMarkaEventMap {
   show: ShowOverrideConfig | undefined;
   hide: undefined;
   welcome: WelcomeOverrideConfig | undefined;
+  /** Emitted when the feedback form becomes visible */
+  open: undefined;
+  /** Emitted after feedback is successfully submitted. Payload contains the submitted fields. */
+  sent: FeedbackFieldValue[];
+  /** Emitted when the feedback form closes (both after success and manual close) */
+  close: undefined;
 }

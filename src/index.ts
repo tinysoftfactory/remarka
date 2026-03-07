@@ -1,5 +1,6 @@
 export { ReMarka } from './ReMarka';
 export { ReMarkaProvider } from './ReMarkaProvider';
+export { REMARKA_EVENTS } from './types';
 export type {
   ReMarkaConfig,
   ReMarkaStyles,
@@ -10,4 +11,5 @@ export type {
   LogEntry,
   FeedbackFieldValue,
   FeedbackPayload,
+  ReMarkaEvent,
 } from './types';
