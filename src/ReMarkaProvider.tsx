@@ -3,6 +3,7 @@ import { StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation, REMARKA_EVENTS } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
+import { isConnected, subscribeToNetInfo } from './services/NetInfoService';
 import { captureScreenshot } from './services/ScreenshotService';
 import FeedbackModal, { FeedbackModalState } from './components/FeedbackModal';
 import WelcomeToast from './components/WelcomeToast';
@@ -37,6 +38,8 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   const [welcomePopupStyle, setWelcomePopupStyle] = useState<StyleProp<ViewStyle>>(undefined);
   const [welcomeMessageStyle, setWelcomeMessageStyle] = useState<StyleProp<TextStyle>>(undefined);
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isOffline, setIsOffline] = useState(false);
 
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,6 +92,10 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
 
     overrideRef.current  = override ?? {};
     animationRef.current = (override?.showAnimation ?? config.showAnimation ?? 'none') as ShowAnimation;
+
+    // Check connectivity before mounting
+    const connected = await isConnected();
+    setIsOffline(!connected);
 
     // Mount first
     setContentState({ phase: 'form', screenshot });
@@ -182,6 +189,15 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     return subscribeToShake(openForm, config.shakeThreshold);
   }, [openForm]);
 
+  // Subscribe to network changes while the form is open
+  useEffect(() => {
+    if (contentState === null) {
+      setIsOffline(false);
+      return;
+    }
+    return subscribeToNetInfo((connected) => setIsOffline(!connected));
+  }, [contentState]);
+
   useEffect(() => {
     return clearTimers;
   }, []);
@@ -223,6 +239,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       showKeyboardImmediately={effectiveConfig.showKeyboardImmediately}
       keyboardDelay={effectiveConfig.keyboardDelay}
       customStyles={styles}
+      isOffline={isOffline}
       onSubmit={handleSubmit}
       onClose={handleClose}
     />

@@ -25,6 +25,7 @@ interface FeedbackFormProps {
   showKeyboardImmediately?: boolean;
   keyboardDelay?: number;
   customStyles?: ReMarkaStyles;
+  isOffline?: boolean;
   onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
   onClose: () => void;
 }
@@ -61,6 +62,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   showKeyboardImmediately = true,
   keyboardDelay = 1500,
   customStyles,
+  isOffline = false,
   onSubmit,
   onClose,
 }) => {
@@ -78,7 +80,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
 
   // Auto-focus logic
   useEffect(() => {
-    if (!showKeyboardImmediately) return;
+    if (!showKeyboardImmediately || isOffline) return;
 
     const targetField = resolveAutoFocusField(fields);
     if (!targetField) return;
@@ -206,18 +208,23 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
       })}
 
       {!textFieldFocused && (
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled, customStyles?.buttonStyle]}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={[styles.submitButtonText, customStyles?.buttonTitleStyle]}>{buttonLabel}</Text>
+        <>
+          {isOffline && (
+            <Text style={styles.offlineWarning}>Check your Internet connection</Text>
           )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.submitButton, (loading || isOffline) && styles.submitButtonDisabled, customStyles?.buttonStyle]}
+            onPress={handleSubmit}
+            disabled={loading || isOffline}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={[styles.submitButtonText, customStyles?.buttonTitleStyle]}>{buttonLabel}</Text>
+            )}
+          </TouchableOpacity>
+        </>
       )}
     </ScrollView>
   );
@@ -263,6 +270,13 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
+  },
+  offlineWarning: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   submitButton: {
     backgroundColor: '#2563EB',

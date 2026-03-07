@@ -29,6 +29,7 @@ interface FeedbackModalProps {
   showKeyboardImmediately?: boolean;
   keyboardDelay?: number;
   customStyles?: ReMarkaStyles;
+  isOffline?: boolean;
   onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
   onClose: () => void;
 }
@@ -47,6 +48,7 @@ const FormContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation'
   showKeyboardImmediately,
   keyboardDelay,
   customStyles,
+  isOffline,
   onSubmit,
   onClose,
 }) => {
@@ -76,6 +78,7 @@ const FormContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation'
         showKeyboardImmediately={showKeyboardImmediately}
         keyboardDelay={keyboardDelay}
         customStyles={customStyles}
+        isOffline={isOffline}
         onSubmit={onSubmit}
         onClose={onClose}
       />
