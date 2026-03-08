@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: '#374151',
     marginBottom: 6,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     paddingRight: 48,
-    fontSize: 15,
+    fontSize: 17,
     color: '#111827',
     backgroundColor: '#FFFFFF',
     minHeight: 110,
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 4,
-    fontSize: 12,
+    fontSize: 13,
     color: '#EF4444',
   },
   inlineButton: {

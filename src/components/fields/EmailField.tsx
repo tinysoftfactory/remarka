@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: '#374151',
     marginBottom: 6,
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 17,
     color: '#111827',
     backgroundColor: '#FFFFFF',
   },
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 4,
-    fontSize: 12,
+    fontSize: 13,
     color: '#EF4444',
   },
 });
