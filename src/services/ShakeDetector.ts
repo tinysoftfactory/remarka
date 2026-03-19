@@ -13,22 +13,24 @@ export function subscribeToShake(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _threshold?: number,
 ): UnsubscribeFn {
-  let RNShake: {
-    addListener: (cb: () => void) => { remove: () => void };
-  } | null = null;
-
   try {
     // Dynamic require keeps react-native-shake optional at bundle time.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    RNShake = require('react-native-shake').default;
+    const RNShake = require('react-native-shake').default as {
+      addListener: (cb: () => void) => { remove: () => void };
+    };
+
+    // In New Architecture (Bridgeless / TurboModule), the native module is
+    // resolved lazily on the first method call, not during require().
+    // Calling addListener() here (inside try) ensures any TurboModuleRegistry
+    // error is caught and handled gracefully.
+    const subscription = RNShake.addListener(onShake);
+    return () => subscription.remove();
   } catch {
     console.warn(
-      '[ReMarka] withShake is enabled but react-native-shake is not installed.\n' +
-      'Run: yarn add react-native-shake && npx pod-install',
+      '[ReMarka] withShake is enabled but the native RNShake module could not be loaded.\n' +
+      'Make sure react-native-shake is installed and linked: yarn add react-native-shake && npx pod-install',
     );
     return () => {};
   }
-
-  const subscription = RNShake!.addListener(onShake);
-  return () => subscription.remove();
 }
