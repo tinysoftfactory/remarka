@@ -18,6 +18,7 @@ class ReMarkaController {
   private _logs: LogEntry[] = [];
   private _api: ApiService | null = null;
   private _userMeta: Record<string, unknown> = {};
+  private _enabled: boolean = true;
 
   private constructor() {}
 
@@ -79,7 +80,23 @@ class ReMarkaController {
   }
 
   static show(override?: ShowOverrideConfig): void {
+    if (!ReMarkaController.instance._enabled) return;
     ReMarkaController.instance.events.emit(REMARKA_EVENTS.SHOW, override);
+  }
+
+  /** Temporarily disable the feedback form (e.g. during gestures or animations). */
+  static disable(): void {
+    ReMarkaController.instance._enabled = false;
+  }
+
+  /** Re-enable the feedback form after it was disabled. */
+  static enable(): void {
+    ReMarkaController.instance._enabled = true;
+  }
+
+  /** Returns whether the feedback form is currently allowed to appear. */
+  static get isEnabled(): boolean {
+    return ReMarkaController.instance._enabled;
   }
 
   static setMeta(meta: Record<string, unknown>): void {

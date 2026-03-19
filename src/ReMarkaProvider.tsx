@@ -186,7 +186,10 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
       return;
     }
     if (!config.withShake) return;
-    return subscribeToShake(openForm, config.shakeThreshold);
+    return subscribeToShake(() => {
+      if (!ReMarka.isEnabled) return;
+      openForm();
+    }, config.shakeThreshold);
   }, [openForm]);
 
   // Subscribe to network changes while the form is open
