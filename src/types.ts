@@ -82,6 +82,14 @@ export interface ReMarkaConfig {
   /** Custom metadata merged into every feedback submission (e.g. app version, user id) */
   meta?: Record<string, unknown>;
   /**
+   * Stable identifier for the current user, used to route moderator responses
+   * back to them. Provide your own (e.g. your auth user id) and the SDK uses it
+   * as-is — no persistent storage needed. When omitted, the SDK generates and
+   * persists one via @react-native-async-storage/async-storage (or falls back to
+   * a per-session id with a warning if that package is not installed).
+   */
+  userId?: string;
+  /**
    * Master switch for the moderator-response feature (default: true).
    * When true, the user can receive replies to their feedback and the SDK
    * will check the backend for pending responses on launch / app foreground.

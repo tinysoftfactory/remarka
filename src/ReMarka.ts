@@ -8,7 +8,7 @@ const MAX_LOGS_THRESHOLD = 500;
 const DEFAULT_LOGS_THRESHOLD = 100;
 const DEFAULT_FIELDS: FieldType[] = ['email', 'text'];
 const DEFAULT_API_URL = 'https://remarka.tsoftfactory.com/api/v1';
-const LIBRARY_VERSION = '0.1.0';
+const LIBRARY_VERSION = '0.2.0';
 
 class ReMarkaController {
   private static _instance: ReMarkaController | null = null;
@@ -20,6 +20,10 @@ class ReMarkaController {
   private _api: ApiService | null = null;
   private _userMeta: Record<string, unknown> = {};
   private _enabled: boolean = true;
+  // Runtime override set via setUserId() — takes precedence over config.userId.
+  private _userIdOverride: string | null = null;
+  // Ids of responses injected locally via showResponse() — their "mark read" is a no-op.
+  private _localResponseIds = new Set<string>();
 
   private constructor() {}
 
@@ -108,6 +112,16 @@ class ReMarkaController {
     ReMarkaController.instance._userMeta = meta;
   }
 
+  /**
+   * Sets the stable user id at runtime — e.g. after the user logs in. Takes
+   * precedence over `config.userId` and the auto-generated/persisted id, and is
+   * used for both feedback submissions and response checks from then on.
+   * Pass `null` to clear the override and fall back to the configured/auto id.
+   */
+  static setUserId(userId: string | null): void {
+    ReMarkaController.instance._userIdOverride = userId;
+  }
+
   static hide(): void {
     ReMarkaController.instance.events.emit(REMARKA_EVENTS.HIDE);
   }
@@ -157,22 +171,56 @@ class ReMarkaController {
   static async checkResponses(): Promise<ResponseMessage[]> {
     const inst = ReMarkaController.instance;
     const config = inst._config;
-    if (!config) return [];
-    if (config.allowResponse === false) return [];
+    if (!config) {
+      console.warn('[ReMarka:debug] checkResponses skipped — not initialized (config null).');
+      return [];
+    }
+    if (config.allowResponse === false) {
+      console.warn('[ReMarka:debug] checkResponses skipped — allowResponse is false.');
+      return [];
+    }
 
     try {
       const userId = await inst.getUserId();
+      console.warn('[ReMarka:debug] checkResponses → userId =', userId, '| projectId =', config.projectId);
       const responses = await inst.getApi().getResponses(config.projectId, userId);
+      console.warn('[ReMarka:debug] checkResponses ← server returned', responses.length, 'response(s):', JSON.stringify(responses));
       if (responses.length > 0) {
         inst.events.emit(REMARKA_EVENTS.RESPONSE, responses);
+        console.warn('[ReMarka:debug] emitted RESPONSE event.');
       }
       return responses;
     } catch (error) {
-      if (__DEV__) {
-        console.warn('[ReMarka] Failed to check for responses:', error);
-      }
+      console.warn('[ReMarka:debug] checkResponses FAILED:', error);
       return [];
     }
+  }
+
+  /**
+   * Testing/preview helper — displays the moderator-response window locally with
+   * the given content, **without contacting the backend**. Use it to design and
+   * verify the response UI before the server endpoints are ready.
+   *
+   * Pressing "Read" / dismissing the window will NOT make a network call for
+   * responses shown this way. `id` is optional and auto-generated if omitted.
+   *
+   *   ReMarka.showResponse({ title: 'Re: your report', description: 'Fixed in 1.4.2 🎉' });
+   */
+  static showResponse(
+    response:
+      | { id?: string; title?: string; description: string; createdAt?: number }
+      | { id?: string; title?: string; description: string; createdAt?: number }[],
+  ): void {
+    const inst = ReMarkaController.instance;
+    const list = Array.isArray(response) ? response : [response];
+
+    const normalized: ResponseMessage[] = list.map((r, i) => {
+      const id = r.id ?? `local-${Date.now()}-${i}`;
+      inst._localResponseIds.add(id);
+      return { id, title: r.title, description: r.description, createdAt: r.createdAt };
+    });
+
+    inst.events.emit(REMARKA_EVENTS.RESPONSE, normalized);
   }
 
   /** Marks a moderator response as read so it is no longer shown to the user. */
@@ -180,6 +228,12 @@ class ReMarkaController {
     const inst = ReMarkaController.instance;
     const config = inst._config;
     if (!config) return;
+
+    // Responses injected locally via showResponse() never hit the backend.
+    if (inst._localResponseIds.has(responseId)) {
+      inst._localResponseIds.delete(responseId);
+      return;
+    }
 
     try {
       const userId = await inst.getUserId();
@@ -225,8 +279,14 @@ class ReMarkaController {
     };
   }
 
-  /** Resolves the stable, persisted per-device user id. */
+  /**
+   * Resolves the stable user id used to route moderator responses.
+   * Priority: runtime setUserId() → config.userId → persisted AsyncStorage id → ephemeral.
+   */
   getUserId(): Promise<string> {
+    if (this._userIdOverride) return Promise.resolve(this._userIdOverride);
+    const custom = this._config?.userId;
+    if (custom) return Promise.resolve(custom);
     return getUserId();
   }
 }

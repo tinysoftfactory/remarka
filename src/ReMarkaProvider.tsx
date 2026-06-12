@@ -168,9 +168,11 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
 
   // Enqueue fetched responses, de-duplicating by id against what is already queued.
   const enqueueResponses = useCallback((responses: ResponseMessage[]) => {
+    console.warn('[ReMarka:debug] Provider received RESPONSE event with', responses.length, 'item(s).');
     setResponseQueue((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const additions = responses.filter((r) => !seen.has(r.id));
+      console.warn('[ReMarka:debug] queue:', prev.length, '→', (additions.length ? prev.length + additions.length : prev.length));
       return additions.length ? [...prev, ...additions] : prev;
     });
   }, []);
@@ -254,6 +256,7 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   }
 
   const currentResponse = responseQueue[0] ?? null;
+  console.warn('[ReMarka:debug] render — queue length:', responseQueue.length, '| currentResponse:', currentResponse ? currentResponse.id : 'none', '| ResponseModal visible:', currentResponse !== null);
   const responseModal = (
     <ResponseModal
       visible={currentResponse !== null}

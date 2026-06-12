@@ -97,6 +97,7 @@ export default function App() {
 | `showKeyboardImmediately`| `boolean`             | `true`                                           | Auto-focus the first relevant input on open                          |
 | `keyboardDelay`          | `number`              | `1500`                                           | Delay in ms before the keyboard appears                              |
 | `meta`                   | `Record<string, unknown>` | `{}`                                         | Custom metadata attached to every submission (e.g. app version, user id) |
+| `userId`                 | `string`              | auto-generated                                   | Stable id used to route [responses](#moderator-responses). Pass your own to skip the `async-storage` dependency; otherwise the SDK persists a generated one |
 | `allowResponse`          | `boolean`             | `true`                                           | Master switch for the [moderator-response feature](#moderator-responses) |
 | `allowHandleResponse`    | `boolean`             | `true`                                           | Show a consent checkbox so the user can opt in/out of receiving a response (only when `allowResponse` is `true`) |
 | `allowHandleResponseTitle`| `string`             | `'Allow response'`                               | Title of the response-consent checkbox                               |
@@ -218,6 +219,23 @@ you pass: `timestamp`, `platform`, `version`.
 
 ---
 
+### `ReMarka.setUserId(userId)`
+
+Sets the stable user id at runtime — e.g. once the user logs in. Takes precedence
+over `config.userId` and the auto-generated/persisted id, and is used for both
+feedback submissions and response checks from then on. Pass `null` to clear the
+override and fall back to the configured/auto id (e.g. on logout).
+
+```ts
+// After login
+ReMarka.setUserId(user.id);
+
+// After logout — back to the auto/persisted id
+ReMarka.setUserId(null);
+```
+
+---
+
 ### `ReMarka.checkResponses()`
 
 Asks the backend whether there are unread moderator responses for this device and
@@ -228,6 +246,29 @@ push notification. Returns a `Promise<ResponseMessage[]>`.
 
 ```ts
 const responses = await ReMarka.checkResponses();
+```
+
+---
+
+### `ReMarka.showResponse(response)` — testing/preview
+
+Displays the moderator-response window locally with the content you pass,
+**without contacting the backend**. Use it to design and verify the response UI
+before the server endpoints exist. `id` is optional. Pressing **Read** dismisses
+the window and makes no network call for responses shown this way.
+
+```ts
+// Single response
+ReMarka.showResponse({
+  title: 'Re: your report',
+  description: 'Thanks for the details — we shipped a fix in 1.4.2 🎉',
+});
+
+// Multiple (shown one after another)
+ReMarka.showResponse([
+  { description: 'First reply' },
+  { title: 'Follow-up', description: 'Second reply' },
+]);
 ```
 
 ---
@@ -397,9 +438,15 @@ ReMarka.init({
 - To enable responses **without** asking the user, set `allowHandleResponse: false`
   (no checkbox; `allowResponse` is used as-is).
 - To disable the feature entirely, set `allowResponse: false`.
-- Install `@react-native-async-storage/async-storage` so the per-device `userId`
-  survives app restarts. Without it, responses only work within a single session
-  and the SDK logs a one-time warning.
+
+**Identifying the user** — responses are routed by a stable `userId`. You have two options:
+
+- **Pass your own** (recommended if your app has auth): `ReMarka.init({ userId: currentUser.id })`.
+  Used as-is, survives restarts, and `async-storage` is **not** required.
+- **Let the SDK generate one**: install `@react-native-async-storage/async-storage`
+  so the generated id is persisted across app restarts. Without either, the id is
+  regenerated every cold start (responses won't survive a restart) and the SDK logs
+  a one-time warning.
 
 The window's title and body come from the server; the **Read** button label is
 configured via `responseReadButtonLabel`. All response UI is styleable through the

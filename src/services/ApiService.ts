@@ -68,17 +68,46 @@ export class ApiService {
     }
 
     const body = await response.json().catch(() => null);
-    const list = Array.isArray(body) ? body : body?.responses;
+    // Accept a bare array, or a wrapper under common keys.
+    const list = Array.isArray(body)
+      ? body
+      : body?.responses ?? body?.data ?? body?.items ?? body?.result;
     if (!Array.isArray(list)) return [];
 
+    const pickString = (item: Record<string, unknown>, keys: string[]): string | undefined => {
+      for (const key of keys) {
+        const v = item[key];
+        if (typeof v === 'string' && v.length > 0) return v;
+      }
+      return undefined;
+    };
+
     return list
-      .filter((item) => item && typeof item.id !== 'undefined' && typeof item.description === 'string')
-      .map((item) => ({
-        id: String(item.id),
-        title: typeof item.title === 'string' ? item.title : undefined,
-        description: item.description as string,
-        createdAt: typeof item.createdAt === 'number' ? item.createdAt : undefined,
-      }));
+      .map((raw): ResponseMessage | null => {
+        if (!raw || typeof raw !== 'object') return null;
+        const item = raw as Record<string, unknown>;
+
+        const idRaw = item.id ?? item._id ?? item.uuid ?? item.responseId;
+        // Tolerate different field names the backend might use for the body text.
+        const description = pickString(item, ['description', 'text', 'message', 'body', 'answer', 'response']);
+        if (typeof idRaw === 'undefined' || !description) return null;
+
+        const createdRaw = item.createdAt ?? item.created_at ?? item.created;
+        const createdAt =
+          typeof createdRaw === 'number'
+            ? createdRaw
+            : typeof createdRaw === 'string' && !Number.isNaN(Date.parse(createdRaw))
+            ? Date.parse(createdRaw)
+            : undefined;
+
+        return {
+          id: String(idRaw),
+          title: pickString(item, ['title', 'subject', 'header']),
+          description,
+          createdAt,
+        };
+      })
+      .filter((r): r is ResponseMessage => r !== null);
   }
 
   /** Marks a moderator response as read so it is no longer returned by getResponses. */
