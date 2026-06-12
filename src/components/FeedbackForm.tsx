@@ -26,7 +26,18 @@ interface FeedbackFormProps {
   keyboardDelay?: number;
   customStyles?: ReMarkaStyles;
   isOffline?: boolean;
-  onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
+  /** Whether to show the response-consent checkbox (allowResponse && allowHandleResponse). */
+  showResponseConsent?: boolean;
+  /** Title of the response-consent checkbox. */
+  responseConsentTitle?: string;
+  /** Effective allowResponse value used when the consent checkbox is not shown. */
+  allowResponseDefault?: boolean;
+  /** Whether the user was offered a choice about receiving a response. */
+  allowHandleResponse?: boolean;
+  onSubmit: (
+    fields: FeedbackFieldValue[],
+    consent: { allowResponse: boolean; allowHandleResponse: boolean },
+  ) => Promise<void>;
   onClose: () => void;
 }
 
@@ -63,6 +74,10 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   keyboardDelay = 1500,
   customStyles,
   isOffline = false,
+  showResponseConsent = false,
+  responseConsentTitle = 'Allow response',
+  allowResponseDefault = true,
+  allowHandleResponse = true,
   onSubmit,
   onClose,
 }) => {
@@ -72,6 +87,8 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [textFieldFocused, setTextFieldFocused] = useState(false);
+  // Consent checkbox defaults to checked when shown.
+  const [responseAllowed, setResponseAllowed] = useState(true);
 
   // One ref per field type
   const inputRefs = useRef<Partial<Record<FieldType, React.RefObject<TextInput>>>>(
@@ -138,8 +155,10 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
       value: values[type]?.trim() ?? '',
     }));
 
+    const allowResponse = showResponseConsent ? responseAllowed : allowResponseDefault;
+
     try {
-      await onSubmit(payload);
+      await onSubmit(payload, { allowResponse, allowHandleResponse });
     } finally {
       setLoading(false);
     }
@@ -209,6 +228,20 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
 
       {!textFieldFocused && (
         <>
+          {showResponseConsent && (
+            <TouchableOpacity
+              style={[styles.consentRow, customStyles?.responseConsentRowStyle]}
+              onPress={() => setResponseAllowed((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, responseAllowed && styles.checkboxChecked]}>
+                {responseAllowed ? <Text style={styles.checkboxMark}>✓</Text> : null}
+              </View>
+              <Text style={[styles.consentLabel, customStyles?.responseConsentLabelStyle]}>
+                {responseConsentTitle}
+              </Text>
+            </TouchableOpacity>
+          )}
           {isOffline && (
             <Text style={styles.offlineWarning}>Check your Internet connection</Text>
           )}
@@ -270,6 +303,37 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#9CA3AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  checkboxChecked: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  checkboxMark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  consentLabel: {
+    flex: 1,
+    fontSize: 15,
+    color: '#374151',
   },
   offlineWarning: {
     color: '#DC2626',

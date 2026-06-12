@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, ReactNode } from 'react';
-import { StyleProp, ViewStyle, TextStyle } from 'react-native';
-import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation, REMARKA_EVENTS } from './types';
+import { AppState, StyleProp, ViewStyle, TextStyle } from 'react-native';
+import { FeedbackFieldValue, ShowOverrideConfig, WelcomeOverrideConfig, ReMarkaStyles, ShowAnimation, ResponseMessage, REMARKA_EVENTS } from './types';
 import { ReMarka } from './ReMarka';
 import { subscribeToShake } from './services/ShakeDetector';
 import { isConnected, subscribeToNetInfo } from './services/NetInfoService';
 import { captureScreenshot } from './services/ScreenshotService';
 import FeedbackModal, { FeedbackModalState } from './components/FeedbackModal';
+import ResponseModal from './components/ResponseModal';
 import WelcomeToast from './components/WelcomeToast';
 
 // Duration to wait for the Modal close animation before unmounting (ms).
@@ -40,6 +41,9 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isOffline, setIsOffline] = useState(false);
+
+  // Queue of moderator responses to show, one at a time.
+  const [responseQueue, setResponseQueue] = useState<ResponseMessage[]>([]);
 
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,7 +131,10 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
   }, [handleClose]);
 
   const handleSubmit = useCallback(
-    async (fields: FeedbackFieldValue[]) => {
+    async (
+      fields: FeedbackFieldValue[],
+      consent: { allowResponse: boolean; allowHandleResponse: boolean },
+    ) => {
       const config = ReMarka.instance.getConfig();
       const effectiveConfig = { ...config, ...overrideRef.current };
       const api = ReMarka.instance.getApi();
@@ -140,6 +147,9 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
           fields,
           logs: ReMarka.instance.getLogs(),
           screenshot,
+          userId: await ReMarka.instance.getUserId(),
+          allowResponse: consent.allowResponse,
+          allowHandleResponse: consent.allowHandleResponse,
           meta: ReMarka.instance.getMeta(),
         });
       } catch (error) {
@@ -156,16 +166,47 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     [contentState, showSuccess],
   );
 
+  // Enqueue fetched responses, de-duplicating by id against what is already queued.
+  const enqueueResponses = useCallback((responses: ResponseMessage[]) => {
+    setResponseQueue((prev) => {
+      const seen = new Set(prev.map((r) => r.id));
+      const additions = responses.filter((r) => !seen.has(r.id));
+      return additions.length ? [...prev, ...additions] : prev;
+    });
+  }, []);
+
   useEffect(() => {
-    const unsubShow    = ReMarka.instance.events.on(REMARKA_EVENTS.SHOW, openForm);
-    const unsubHide    = ReMarka.instance.events.on(REMARKA_EVENTS.HIDE, handleClose);
-    const unsubWelcome = ReMarka.instance.events.on(REMARKA_EVENTS.WELCOME, openWelcome);
+    const unsubShow     = ReMarka.instance.events.on(REMARKA_EVENTS.SHOW, openForm);
+    const unsubHide     = ReMarka.instance.events.on(REMARKA_EVENTS.HIDE, handleClose);
+    const unsubWelcome  = ReMarka.instance.events.on(REMARKA_EVENTS.WELCOME, openWelcome);
+    const unsubResponse = ReMarka.instance.events.on(REMARKA_EVENTS.RESPONSE, enqueueResponses);
     return () => {
       unsubShow();
       unsubHide();
       unsubWelcome();
+      unsubResponse();
     };
-  }, [openForm, handleClose, openWelcome]);
+  }, [openForm, handleClose, openWelcome, enqueueResponses]);
+
+  // Mark the current response as read and advance to the next one.
+  const handleResponseRead = useCallback(() => {
+    const current = responseQueue[0];
+    if (!current) return;
+    void ReMarka.markResponseRead(current.id);
+    setResponseQueue((prev) => prev.filter((r) => r.id !== current.id));
+  }, [responseQueue]);
+
+  // Check for pending responses on mount and whenever the app returns to foreground.
+  useEffect(() => {
+    void ReMarka.checkResponses();
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void ReMarka.checkResponses();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Auto-show welcome hint once on mount when withShake is enabled
   useEffect(() => {
@@ -205,46 +246,69 @@ export const ReMarkaProvider: React.FC<ReMarkaProviderProps> = ({ styles }) => {
     return clearTimers;
   }, []);
 
-  if (contentState === null) {
-    return (
-      <WelcomeToast
-        visible={welcomeVisible}
-        message={welcomeMessage}
-        icon={welcomeIcon}
-        popupStyle={welcomePopupStyle}
-        messageStyle={welcomeMessageStyle}
-        onDismiss={() => setWelcomeVisible(false)}
-      />
-    );
-  }
-
   let config: ReturnType<typeof ReMarka.instance.getConfig> | null = null;
   try {
     config = ReMarka.instance.getConfig();
   } catch {
-    return null;
+    config = null;
+  }
+
+  const currentResponse = responseQueue[0] ?? null;
+  const responseModal = (
+    <ResponseModal
+      visible={currentResponse !== null}
+      response={currentResponse}
+      readButtonLabel={config?.responseReadButtonLabel ?? 'Read'}
+      customStyles={styles}
+      onRead={handleResponseRead}
+    />
+  );
+
+  if (contentState === null || config === null) {
+    return (
+      <>
+        <WelcomeToast
+          visible={welcomeVisible}
+          message={welcomeMessage}
+          icon={welcomeIcon}
+          popupStyle={welcomePopupStyle}
+          messageStyle={welcomeMessageStyle}
+          onDismiss={() => setWelcomeVisible(false)}
+        />
+        {responseModal}
+      </>
+    );
   }
 
   const effectiveConfig = { ...config, ...overrideRef.current };
+  const allowResponse = effectiveConfig.allowResponse !== false;
+  const allowHandleResponse = effectiveConfig.allowHandleResponse !== false;
 
   return (
-    <FeedbackModal
-      visible={modalVisible}
-      state={contentState}
-      title={effectiveConfig.title}
-      fields={effectiveConfig.fields ?? ['email', 'text']}
-      showAnimation={effectiveConfig.showAnimation ?? 'none'}
-      emailPlaceholderText={effectiveConfig.emailPlaceholderText}
-      messagePlaceholderText={effectiveConfig.messagePlaceholderText}
-      emailLabel={effectiveConfig.emailLabel}
-      messageLabel={effectiveConfig.messageLabel}
-      buttonLabel={effectiveConfig.buttonLabel}
-      showKeyboardImmediately={effectiveConfig.showKeyboardImmediately}
-      keyboardDelay={effectiveConfig.keyboardDelay}
-      customStyles={styles}
-      isOffline={isOffline}
-      onSubmit={handleSubmit}
-      onClose={handleClose}
-    />
+    <>
+      <FeedbackModal
+        visible={modalVisible}
+        state={contentState}
+        title={effectiveConfig.title}
+        fields={effectiveConfig.fields ?? ['email', 'text']}
+        showAnimation={effectiveConfig.showAnimation ?? 'none'}
+        emailPlaceholderText={effectiveConfig.emailPlaceholderText}
+        messagePlaceholderText={effectiveConfig.messagePlaceholderText}
+        emailLabel={effectiveConfig.emailLabel}
+        messageLabel={effectiveConfig.messageLabel}
+        buttonLabel={effectiveConfig.buttonLabel}
+        showKeyboardImmediately={effectiveConfig.showKeyboardImmediately}
+        keyboardDelay={effectiveConfig.keyboardDelay}
+        customStyles={styles}
+        isOffline={isOffline}
+        showResponseConsent={allowResponse && allowHandleResponse}
+        responseConsentTitle={effectiveConfig.allowHandleResponseTitle ?? 'Allow response'}
+        allowResponseDefault={allowResponse}
+        allowHandleResponse={allowHandleResponse}
+        onSubmit={handleSubmit}
+        onClose={handleClose}
+      />
+      {responseModal}
+    </>
   );
 };

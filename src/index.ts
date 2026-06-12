@@ -11,5 +11,6 @@ export type {
   LogEntry,
   FeedbackFieldValue,
   FeedbackPayload,
+  ResponseMessage,
   ReMarkaEvent,
 } from './types';

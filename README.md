@@ -12,8 +12,9 @@ or a programmatic call.
 yarn add remarka react-native-safe-area-context
 
 # Optional — required only if the features are enabled:
-yarn add react-native-shake       # withShake: true
-yarn add react-native-view-shot   # withScreenshot: true
+yarn add react-native-shake                          # withShake: true
+yarn add react-native-view-shot                      # withScreenshot: true
+yarn add @react-native-async-storage/async-storage   # moderator responses (persists the user id)
 
 npx pod-install   # iOS
 ```
@@ -96,6 +97,10 @@ export default function App() {
 | `showKeyboardImmediately`| `boolean`             | `true`                                           | Auto-focus the first relevant input on open                          |
 | `keyboardDelay`          | `number`              | `1500`                                           | Delay in ms before the keyboard appears                              |
 | `meta`                   | `Record<string, unknown>` | `{}`                                         | Custom metadata attached to every submission (e.g. app version, user id) |
+| `allowResponse`          | `boolean`             | `true`                                           | Master switch for the [moderator-response feature](#moderator-responses) |
+| `allowHandleResponse`    | `boolean`             | `true`                                           | Show a consent checkbox so the user can opt in/out of receiving a response (only when `allowResponse` is `true`) |
+| `allowHandleResponseTitle`| `string`             | `'Allow response'`                               | Title of the response-consent checkbox                               |
+| `responseReadButtonLabel`| `string`              | `'Read'`                                         | Label for the button on the response window                          |
 | `withWelcome`            | `boolean`             | `true`                                           | Show the welcome hint on mount when `withShake` is `true`            |
 | `welcomeMessage`         | `string`              | `"Shake your device if you'd like to send feedback."` | Text shown in the welcome hint                                  |
 | `welcomeDuration`        | `number`              | `3000`                                           | How long the welcome hint stays visible (ms)                         |
@@ -213,6 +218,35 @@ you pass: `timestamp`, `platform`, `version`.
 
 ---
 
+### `ReMarka.checkResponses()`
+
+Asks the backend whether there are unread moderator responses for this device and
+shows them if so. **You normally don't need to call this** — `ReMarkaProvider`
+calls it automatically on mount and whenever the app returns to the foreground.
+Call it manually after events the provider can't see, e.g. right after handling a
+push notification. Returns a `Promise<ResponseMessage[]>`.
+
+```ts
+const responses = await ReMarka.checkResponses();
+```
+
+---
+
+### `ReMarka.markResponseRead(responseId)`
+
+Marks a response as read on the backend so it is never shown again. The response
+window calls this for you when the user presses **Read** or dismisses the window;
+exposed for advanced/custom flows. Returns a `Promise<void>`.
+
+---
+
+### `ReMarka.getUserId()`
+
+Resolves the stable, persisted per-device id the SDK uses to attach responses.
+Returns a `Promise<string>`.
+
+---
+
 ### `ReMarka.showWelcome(override?)`
 
 Programmatically shows the welcome hint. Works regardless of the `withWelcome`
@@ -326,6 +360,55 @@ focuses the most relevant input after `keyboardDelay` ms. Focus priority:
 4. No focus if the `fields` array is empty
 
 Set `showKeyboardImmediately: false` to disable this behaviour entirely.
+
+---
+
+## Moderator responses
+
+ReMarka can show your users replies that moderators write to their feedback —
+a lightweight one-way "support inbox".
+
+**How it works**
+
+1. The feedback form shows an **"Allow response"** checkbox (checked by default).
+   It appears only when both `allowResponse` and `allowHandleResponse` are `true`.
+   When the user submits, their choice is sent to the backend along with a stable,
+   per-device `userId` the SDK generates and persists automatically.
+2. Moderators write a response to that feedback on the server.
+3. On every app launch and foreground, `ReMarkaProvider` automatically calls
+   `ReMarka.checkResponses()`. If there is an unread response it pops up a window
+   with an optional title, the response text, and a **Read** button.
+4. Pressing **Read** (or dismissing the window) marks the response read on the
+   server so it is never shown again.
+
+**Setup**
+
+```ts
+ReMarka.init({
+  projectId: 'your-project-id',
+  apiKey: 'your-api-key',
+  allowResponse: true,                 // default — enables the whole feature
+  allowHandleResponse: true,           // default — shows the consent checkbox
+  allowHandleResponseTitle: 'Allow the team to reply to me',
+  responseReadButtonLabel: 'Got it',
+});
+```
+
+- To enable responses **without** asking the user, set `allowHandleResponse: false`
+  (no checkbox; `allowResponse` is used as-is).
+- To disable the feature entirely, set `allowResponse: false`.
+- Install `@react-native-async-storage/async-storage` so the per-device `userId`
+  survives app restarts. Without it, responses only work within a single session
+  and the SDK logs a one-time warning.
+
+The window's title and body come from the server; the **Read** button label is
+configured via `responseReadButtonLabel`. All response UI is styleable through the
+`styles` prop on `<ReMarkaProvider>` (`responseContainerStyle`, `responseTitleStyle`,
+`responseDescriptionStyle`, `responseButtonStyle`, `responseButtonTitleStyle`, plus
+`responseConsentRowStyle` / `responseConsentLabelStyle` for the form checkbox).
+
+See [RESPONSE_FEATURE_SERVER.md](RESPONSE_FEATURE_SERVER.md) for the backend
+implementation guide (DB schema + API endpoints).
 
 ---
 

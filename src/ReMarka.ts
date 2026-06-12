@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
-import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig, WelcomeOverrideConfig, REMARKA_EVENTS } from './types';
+import { ReMarkaConfig, LogEntry, FieldType, ShowOverrideConfig, WelcomeOverrideConfig, ResponseMessage, REMARKA_EVENTS } from './types';
 import { SimpleEventEmitter } from './utils/EventEmitter';
 import { ApiService } from './services/ApiService';
+import { getUserId } from './services/UserIdService';
 
 const MAX_LOGS_THRESHOLD = 500;
 const DEFAULT_LOGS_THRESHOLD = 100;
@@ -53,6 +54,10 @@ class ReMarkaController {
       tag: 'feedback',
       showKeyboardImmediately: true,
       keyboardDelay: 1500,
+      allowResponse: true,
+      allowHandleResponse: true,
+      allowHandleResponseTitle: 'Allow response',
+      responseReadButtonLabel: 'Read',
       apiUrl: DEFAULT_API_URL,
       ...config,
       logsThreshold: threshold,
@@ -136,8 +141,54 @@ class ReMarkaController {
       tag: data.tag ?? config.tag ?? 'feedback',
       fields,
       logs: inst.getLogs(),
+      userId: await inst.getUserId(),
+      allowResponse: config.allowResponse !== false,
+      allowHandleResponse: config.allowHandleResponse !== false,
       meta: inst.getMeta(),
     });
+  }
+
+  /**
+   * Checks the backend for pending moderator responses for this user and, if any
+   * are found, emits them so the ReMarkaProvider can display the response window.
+   * Called automatically by ReMarkaProvider on mount and on app foreground;
+   * can also be called manually (e.g. after login or a push notification).
+   */
+  static async checkResponses(): Promise<ResponseMessage[]> {
+    const inst = ReMarkaController.instance;
+    const config = inst._config;
+    if (!config) return [];
+    if (config.allowResponse === false) return [];
+
+    try {
+      const userId = await inst.getUserId();
+      const responses = await inst.getApi().getResponses(config.projectId, userId);
+      if (responses.length > 0) {
+        inst.events.emit(REMARKA_EVENTS.RESPONSE, responses);
+      }
+      return responses;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[ReMarka] Failed to check for responses:', error);
+      }
+      return [];
+    }
+  }
+
+  /** Marks a moderator response as read so it is no longer shown to the user. */
+  static async markResponseRead(responseId: string): Promise<void> {
+    const inst = ReMarkaController.instance;
+    const config = inst._config;
+    if (!config) return;
+
+    try {
+      const userId = await inst.getUserId();
+      await inst.getApi().markResponseRead(config.projectId, userId, responseId);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[ReMarka] Failed to mark response as read:', error);
+      }
+    }
   }
 
   // ─── Internal helpers used by ReMarkaProvider ────────────────────────────────
@@ -172,6 +223,11 @@ class ReMarkaController {
       platform: Platform.OS,
       version: LIBRARY_VERSION,
     };
+  }
+
+  /** Resolves the stable, persisted per-device user id. */
+  getUserId(): Promise<string> {
+    return getUserId();
   }
 }
 

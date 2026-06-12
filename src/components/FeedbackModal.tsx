@@ -30,7 +30,14 @@ interface FeedbackModalProps {
   keyboardDelay?: number;
   customStyles?: ReMarkaStyles;
   isOffline?: boolean;
-  onSubmit: (fields: FeedbackFieldValue[]) => Promise<void>;
+  showResponseConsent?: boolean;
+  responseConsentTitle?: string;
+  allowResponseDefault?: boolean;
+  allowHandleResponse?: boolean;
+  onSubmit: (
+    fields: FeedbackFieldValue[],
+    consent: { allowResponse: boolean; allowHandleResponse: boolean },
+  ) => Promise<void>;
   onClose: () => void;
 }
 
@@ -49,6 +56,10 @@ const FormContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation'
   keyboardDelay,
   customStyles,
   isOffline,
+  showResponseConsent,
+  responseConsentTitle,
+  allowResponseDefault,
+  allowHandleResponse,
   onSubmit,
   onClose,
 }) => {
@@ -79,6 +90,10 @@ const FormContent: React.FC<Omit<FeedbackModalProps, 'visible' | 'showAnimation'
         keyboardDelay={keyboardDelay}
         customStyles={customStyles}
         isOffline={isOffline}
+        showResponseConsent={showResponseConsent}
+        responseConsentTitle={responseConsentTitle}
+        allowResponseDefault={allowResponseDefault}
+        allowHandleResponse={allowHandleResponse}
         onSubmit={onSubmit}
         onClose={onClose}
       />
