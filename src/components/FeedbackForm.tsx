@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   TextInput,
+  Keyboard,
 } from 'react-native';
 import { FieldType, FeedbackFieldValue, ReMarkaStyles } from '../types';
 import EmailField from './fields/EmailField';
@@ -108,6 +109,16 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
 
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On Android, dismissing the keyboard via the hardware back button does not
+  // fire the TextInput's onBlur, leaving the UI in its "focused" state. Listen
+  // to the global keyboard-hide event so the button layout is restored.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      setTextFieldFocused(false);
+    });
+    return () => sub.remove();
   }, []);
 
   const setValue = (field: FieldType, value: string) => {
